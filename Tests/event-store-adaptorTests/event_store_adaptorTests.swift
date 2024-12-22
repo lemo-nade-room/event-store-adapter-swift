@@ -1,4 +1,5 @@
 import Testing
+
 @testable import event_store_adaptor
 
 @Test func example() async throws {
