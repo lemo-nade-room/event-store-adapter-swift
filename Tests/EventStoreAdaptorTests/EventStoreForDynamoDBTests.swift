@@ -15,14 +15,6 @@ struct UserAccount: Aggregate {
     var version: Int
     var lastUpdatedAt: Date
 
-    init(id: Id, name: String, sequenceNumber: Int, version: Int, lastUpdatedAt: Date) {
-        self.id = id
-        self.name = name
-        self.sequenceNumber = sequenceNumber
-        self.version = version
-        self.lastUpdatedAt = lastUpdatedAt
-    }
-
     static func make(id: Id, name: String) -> (Self, Event) {
         var mySelf = Self.init(
             id: id,

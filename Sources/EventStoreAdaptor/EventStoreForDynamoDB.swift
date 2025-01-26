@@ -2,13 +2,20 @@
 import Foundation
 import Logging
 
+/// Loggerのデフォルト値
 public let defaultLogger = Logger(label: "event-store-for-dynamo-db")
+/// Journalテーブル名のデフォルト値
 public let defaultJournalTableName = "journal"
+/// Journalテーブルの集約IDのインデックス名のデフォルト値
 public let defaultJournalAidIndexName = "aid-index"
+/// Snapshotテーブル名のデフォルト値
 public let defaultSnapshotTableName = "snapshot"
+/// Snapshotテーブルの集約IDのインデックス名のデフォルト値
 public let defaultSnapshotAidIndexName = "aid-index"
+/// デフォルトのシャード数
 public let defaultShardCount = 64
 
+/// DynamoDBを永続化に使用するイベントストア
 public struct EventStoreForDynamoDB<
     Aggregate: EventStoreAdaptor.Aggregate,
     Event: EventStoreAdaptor.Event
@@ -56,8 +63,14 @@ public struct EventStoreForDynamoDB<
 }
 
 extension EventStoreForDynamoDB: EventStore {
+    /// 集約ID
     public typealias AggregateId = Aggregate.Id
 
+    /// 最新のスナップショットを集約IDで取得する。
+    /// 存在しない場合はnilを消す
+    /// - Parameter aggregateId: 集約ID
+    /// - Returns: 最新のスナップショット
+    /// - Throws: クエリに失敗、あるいはデシリアライズに失敗した際にエラーが投げられる
     public func getLatestSnapshotById(aggregateId: AggregateId) async throws -> Aggregate? {
         let output = try await client.query(
             input: .init(
@@ -88,6 +101,12 @@ extension EventStoreForDynamoDB: EventStore {
         return aggregate
     }
 
+    /// 指定したシーケンス番号から、指定した集約の全てのイベントを取得する
+    /// - Parameters:
+    ///   - aggregateId: 集約ID
+    ///   - sequenceNumber: シーケンス番号
+    /// - Returns: イベント一覧
+    /// - Throws: クエリに失敗した場合にエラーが投げられる
     public func getEventsByIdSinceSequenceNumber(
         aggregateId: AggregateId,
         sequenceNumber: Int
@@ -114,6 +133,11 @@ extension EventStoreForDynamoDB: EventStore {
         }
     }
 
+    /// イベントを永続化する
+    /// - Parameters:
+    ///   - event: 永続化するイベント
+    ///   - version: 楽観的ロック用バージョン
+    /// - Throws: クエリに失敗した際にエラーがスローされる
     public func persistEvent(event: Event, version: Int) async throws {
         if event.isCreated {
             fatalError("Invalid event: \(event)")
@@ -123,6 +147,11 @@ extension EventStoreForDynamoDB: EventStore {
         try await tryPurgeExcessSnapshots(aggregateId: event.aggregateId)
     }
 
+    /// イベントと集約のスナップショットを永続化する
+    /// - Parameters:
+    ///   - event: イベント
+    ///   - aggregate: 集約
+    /// - Throws: クエリに失敗した際にエラーがスローされる
     public func persistEventAndSnapshot(event: Event, aggregate: Aggregate) async throws {
         if event.isCreated {
             try await createEventAndSnapshot(event: event, aggregate: aggregate)

@@ -1,6 +1,7 @@
 import Crypto
 import Foundation
 
+/// 集約IDとシャード数、シーケンス番号からパーティションキーとソートキーを解決する
 public struct KeyResolver<Id: AggregateId>: Sendable {
     /// 集約IDとシャード数を受け取り、partition keyを返す
     public var resolvePartitionKey: @Sendable (Id, Int) -> String
@@ -20,6 +21,11 @@ public struct KeyResolver<Id: AggregateId>: Sendable {
     }
 }
 
+/// デフォルトのパーティションキーリゾルバー
+/// - Parameters:
+///   - id: 集約ID
+///   - shardCount: シャード数
+/// - Returns: パーティションキー
 public func defaultResolvePartitionKey<Id: AggregateId>(id: Id, shardCount: Int) -> String {
     let data = Data(id.description.utf8)
     let hash = SHA256.hash(data: data)
@@ -39,6 +45,11 @@ public func defaultResolvePartitionKey<Id: AggregateId>(id: Id, shardCount: Int)
     return "\(Id.name)-\(remainder)"
 }
 
+/// デフォルトのソートキーリゾルバー
+/// - Parameters:
+///   - id: 集約ID
+///   - sequenceNumber: シーケンス番号
+/// - Returns: ソートキー
 public func defaultResolveSortKey<Id: AggregateId>(id: Id, sequenceNumber: Int) -> String {
     "\(Id.name)-\(id.description)-\(sequenceNumber)"
 }
