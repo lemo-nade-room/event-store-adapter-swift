@@ -5,7 +5,6 @@ import Foundation
 import Logging
 import PackageTestUtil
 @preconcurrency import SmithyHTTPAPI
-import System
 import Testing
 
 struct UserAccount: Aggregate {
