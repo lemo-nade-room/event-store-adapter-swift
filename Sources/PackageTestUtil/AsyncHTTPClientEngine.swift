@@ -52,7 +52,9 @@ public struct AsyncHTTPClientEngine: SmithyHTTPAPI.HTTPClient {
         )
 
         let status = clientResponse.status
-        let statusCode: HTTPStatusCode = .init(rawValue: Int(status.code))!
+        guard let statusCode: HTTPStatusCode = .init(rawValue: Int(status.code)) else {
+            throw ClientError.invalidStatusCode(code: Int(status.code))
+        }
 
         var responseHeaders = Headers()
         for (name, value) in clientResponse.headers {
@@ -73,5 +75,6 @@ public struct AsyncHTTPClientEngine: SmithyHTTPAPI.HTTPClient {
 
     public enum ClientError: Sendable, Error {
         case dataNotFound(message: String)
+        case invalidStatusCode(code: Int)
     }
 }
