@@ -2,6 +2,12 @@ name: ci
 on:
   push:
     branches: [ main ]
+    paths:
+      - ".github/workflows/ci.yaml"
+      - "**.swift"
+      - ".swift-format"
+      - "compose.yaml"
+      - "Package.resolved"
   pull_request:
     branches: [ main ]
   schedule:
