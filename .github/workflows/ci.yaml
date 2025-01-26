@@ -1,0 +1,44 @@
+name: ci
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'
+jobs:
+  lint:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      - run: brew install swift-format
+      - run: swift format lint -s --configuration .swift-format -r Sources Tests Package.swift
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+      - run: swift build
+  test-small:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+      - run: swift test
+        env:
+          TEST_LEVEL: small
+  test-medium:
+    runs-on: ubuntu-latest
+    needs: test-small
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up -d
+      - uses: swift-actions/setup-swift@v2
+      - run: swift test
+        env:
+          TEST_LEVEL: medium
+      - if: always()
+        run: docker compose down
