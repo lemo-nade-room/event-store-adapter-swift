@@ -21,7 +21,7 @@ import Testing
 
         #expect(result == expected)
     }
-    
+
     @Test(.enabled(if: small))
     func resolveSortKey() async throws {
         let sut = KeyResolver<SampleAggregateId>()

@@ -11,7 +11,7 @@ public protocol Aggregate: Sendable, Hashable, Codable {
 
     /// バージョン
     var version: Int { get set }
-    
+
     var lastUpdatedAt: Date { get }
 }
 

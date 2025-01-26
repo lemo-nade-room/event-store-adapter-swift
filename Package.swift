@@ -9,7 +9,7 @@ let package = Package(
         .library(
             name: "EventStoreAdaptor",
             targets: [
-                "EventStoreAdaptor",
+                "EventStoreAdaptor"
             ]
         )
     ],
