@@ -1,25 +1,39 @@
 // swift-tools-version: 6.0
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(
     name: "event-store-adaptor",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v15)],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "EventStoreAdaptor",
-            targets: ["EventStoreAdaptor"])
+            targets: [
+                "EventStoreAdaptor",
+            ]
+        )
+    ],
+    dependencies: [
+        .package(url: "https://github.com/awslabs/aws-sdk-swift", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "EventStoreAdaptor"),
+            name: "EventStoreAdaptor",
+            dependencies: [
+                .product(name: "AWSDynamoDB", package: "aws-sdk-swift"),
+                .product(name: "Crypto", package: "swift-crypto"),
+            ]),
         .testTarget(
             name: "EventStoreAdaptorTests",
-            dependencies: ["EventStoreAdaptor"]
-        ),
+            dependencies: [
+                .target(name: "EventStoreAdaptor"),
+                .target(name: "PackageTestUtil"),
+            ]),
+        .target(
+            name: "PackageTestUtil",
+            dependencies: [
+                .target(name: "EventStoreAdaptor")
+            ]),
     ]
 )
