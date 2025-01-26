@@ -1,5 +1,4 @@
 import Foundation
-import System
 
 package var small: Bool {
     Environment.enableSmall
