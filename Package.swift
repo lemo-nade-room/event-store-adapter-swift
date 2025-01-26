@@ -16,6 +16,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/awslabs/aws-sdk-swift", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
+        .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.0.0"),
     ],
     targets: [
         .target(
@@ -31,13 +32,15 @@ let package = Package(
             dependencies: [
                 .target(name: "EventStoreAdaptor"),
                 .target(name: "PackageTestUtil"),
+                .product(name: "AsyncHTTPClient", package: "async-http-client"),
             ],
             swiftSettings: swiftSettings
         ),
         .target(
             name: "PackageTestUtil",
             dependencies: [
-                .target(name: "EventStoreAdaptor")
+                .target(name: "EventStoreAdaptor"),
+                .product(name: "AsyncHTTPClient", package: "async-http-client"),
             ],
             swiftSettings: swiftSettings
         ),

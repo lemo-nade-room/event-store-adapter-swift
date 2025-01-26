@@ -163,8 +163,7 @@ where
         let client = try await DynamoDBClient(
             config: .init(
                 endpoint: "http://localhost:8001",
-                httpClientEngine: URLSessionHTTPClient(
-                    httpClientConfiguration: .init(protocolType: .http))
+                httpClientEngine: AsyncHTTPClientEngine(httpClient: .shared)
             ))
 
         let testTimeFactor =
