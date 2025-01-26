@@ -163,7 +163,7 @@ where
         let client = try await DynamoDBClient(
             config: .init(
                 region: "local",
-                endpoint: "http://localhost:8001",
+                endpoint: "http://dynamodb:8001",
                 httpClientEngine: AsyncHTTPClientEngine(httpClient: .shared)
             ))
 
