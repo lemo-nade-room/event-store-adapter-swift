@@ -23,17 +23,29 @@ let package = Package(
             dependencies: [
                 .product(name: "AWSDynamoDB", package: "aws-sdk-swift"),
                 .product(name: "Crypto", package: "swift-crypto"),
-            ]),
+            ],
+            swiftSettings: swiftSettings
+        ),
         .testTarget(
             name: "EventStoreAdaptorTests",
             dependencies: [
                 .target(name: "EventStoreAdaptor"),
                 .target(name: "PackageTestUtil"),
-            ]),
+            ],
+            swiftSettings: swiftSettings
+        ),
         .target(
             name: "PackageTestUtil",
             dependencies: [
                 .target(name: "EventStoreAdaptor")
-            ]),
-    ]
+            ],
+            swiftSettings: swiftSettings
+        ),
+    ],
+    swiftLanguageModes: [.v6]
 )
+var swiftSettings: [SwiftSetting] {
+    [
+        .enableExperimentalFeature("StrictConcurrency")
+    ]
+}
