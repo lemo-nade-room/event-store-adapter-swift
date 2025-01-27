@@ -9,8 +9,8 @@ import SmithyHTTPAPI
 public struct AsyncHTTPClientEngine: SmithyHTTPAPI.HTTPClient {
     private let httpClient: AsyncHTTPClient.HTTPClient
 
-    /// タイムアウトなど、`execute` 実行時の設定を行うためのパラメータ
-    private let defaultRequestTimeout: NIODeadline
+    /// タイムアウト
+    private let defaultTimeout: TimeInterval
 
     /// イニシャライザ
     /// - Parameters:
@@ -18,10 +18,10 @@ public struct AsyncHTTPClientEngine: SmithyHTTPAPI.HTTPClient {
     ///   - timeoutSeconds: リクエスト1回あたりのデフォルトタイムアウト秒数
     public init(
         httpClient: AsyncHTTPClient.HTTPClient,
-        timeoutSeconds: Int = 30
+        timeoutSeconds: TimeInterval = 30
     ) {
         self.httpClient = httpClient
-        self.defaultRequestTimeout = NIODeadline.now() + .seconds(Int64(timeoutSeconds))
+        self.defaultTimeout = timeoutSeconds
     }
 
     /// プロトコル準拠メソッド
@@ -48,7 +48,7 @@ public struct AsyncHTTPClientEngine: SmithyHTTPAPI.HTTPClient {
 
         let clientResponse = try await httpClient.execute(
             clientRequest,
-            deadline: defaultRequestTimeout
+            deadline: NIODeadline.now() + .seconds(Int64(defaultTimeout))
         )
 
         let status = clientResponse.status
