@@ -165,6 +165,7 @@ where
                 region: "local",
                 endpoint: "http://localhost:8001",
                 httpClientEngine: AsyncHTTPClientEngine(httpClient: .shared)
+                httpClientEngine: AsyncHTTPClientEngine(httpClient: .shared, timeoutSeconds: 5 * 60)
             ))
 
         let testTimeFactor =
