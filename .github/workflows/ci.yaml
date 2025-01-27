@@ -25,6 +25,7 @@ concurrency:
 
 jobs:
   lint:
+    timeout-minutes: 5
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +33,7 @@ jobs:
       - run: brew install swift-format
       - run: swift format lint -s --configuration .swift-format -r Sources Tests Package.swift
   build:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -45,6 +47,7 @@ jobs:
           swift-version: "6.0"
       - run: swift build
   test-small:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -60,6 +63,7 @@ jobs:
         env:
           TEST_LEVEL: small
   test-medium:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     needs: test-small
     services:
