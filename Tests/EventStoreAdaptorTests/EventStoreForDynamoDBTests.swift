@@ -162,7 +162,8 @@ where
         let logger = Logger(label: "EventStoreForDynamoDBTests.test")
         let client = try await DynamoDBClient(
             config: .init(
-                region: "local",
+                ignoreConfiguredEndpointURLs: true,
+                region: "ap-northeast-1",
                 endpoint: "http://localhost:8001",
                 httpClientEngine: AsyncHTTPClientEngine(httpClient: .shared)
             ))
