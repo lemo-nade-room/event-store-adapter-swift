@@ -164,7 +164,7 @@ where
             config: .init(
                 ignoreConfiguredEndpointURLs: true,
                 region: "ap-northeast-1",
-                endpoint: "http://dynamodb:8000",
+                endpoint: "http://localhost:8000",
                 httpClientEngine: AsyncHTTPClientEngine(httpClient: .shared)
             ))
 
