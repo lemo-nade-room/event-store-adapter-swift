@@ -75,5 +75,7 @@ jobs:
       - run: swift test
         env:
           TEST_LEVEL: medium
+          AWS_ACCESS_KEY_ID: dummy
+          AWS_SECRET_ACCESS_KEY: dummy
       - if: always()
         run: docker compose down
