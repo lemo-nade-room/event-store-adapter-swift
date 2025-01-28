@@ -165,7 +165,7 @@ where
                 ignoreConfiguredEndpointURLs: true,
                 region: "ap-northeast-1",
                 endpoint: "http://localhost:8001",
-                httpClientEngine: AsyncHTTPClientEngine(httpClient: .shared)
+                httpClientEngine: ClientConfigurationDefaults.makeClient(httpClientConfiguration: .init(protocolType: .http))
             ))
 
         let testTimeFactor =
