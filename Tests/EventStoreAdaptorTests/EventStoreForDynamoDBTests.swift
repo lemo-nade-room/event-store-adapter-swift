@@ -7,6 +7,10 @@ import PackageTestUtil
 @preconcurrency import SmithyHTTPAPI
 import Testing
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 struct UserAccount: Aggregate {
     var id: Id
     var name: String
@@ -165,7 +169,8 @@ where
                 ignoreConfiguredEndpointURLs: true,
                 region: "ap-northeast-1",
                 endpoint: "http://localhost:8001",
-                httpClientEngine: AsyncHTTPClientEngine(httpClient: .shared)
+                httpClientEngine: URLSessionHTTPClient(
+                    httpClientConfiguration: .init(protocolType: .http))
             ))
 
         let testTimeFactor =
