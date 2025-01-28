@@ -37,7 +37,7 @@ let package = Package(
         .target(
             name: "PackageTestUtil",
             dependencies: [
-                .target(name: "EventStoreAdaptor"),
+                .target(name: "EventStoreAdaptor")
             ],
             swiftSettings: swiftSettings
         ),
