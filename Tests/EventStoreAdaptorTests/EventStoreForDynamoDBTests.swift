@@ -238,4 +238,35 @@ where
         #expect(userAccount.sequenceNumber == 3)
         #expect(userAccount.version == 3)
     }
+
+    @Test(.enabled(if: small)) func eventStoreOnMemory() async throws {
+        let eventStore = EventStoreForMemory<UserAccount, UserAccount.Event>()
+
+        let idValue = UUID()
+        let id = UserAccount.Id(value: idValue)
+
+        var (userAccount, event) = UserAccount.make(id: id, name: "test")
+        try await eventStore.persistEventAndSnapshot(event: event, aggregate: userAccount)
+
+        userAccount = try #require(try await findById(store: eventStore, id: id))
+        #expect(userAccount.name == "test")
+        #expect(userAccount.sequenceNumber == 1)
+        #expect(userAccount.version == 1)
+
+        event = try userAccount.rename(name: "test2")
+        try await eventStore.persistEvent(event: event, version: userAccount.version)
+
+        userAccount = try #require(try await findById(store: eventStore, id: id))
+        #expect(userAccount.name == "test2")
+        #expect(userAccount.sequenceNumber == 2)
+        #expect(userAccount.version == 2)
+
+        event = try userAccount.rename(name: "test3")
+        try await eventStore.persistEventAndSnapshot(event: event, aggregate: userAccount)
+
+        userAccount = try #require(try await findById(store: eventStore, id: id))
+        #expect(userAccount.name == "test3")
+        #expect(userAccount.sequenceNumber == 3)
+        #expect(userAccount.version == 3)
+    }
 }
