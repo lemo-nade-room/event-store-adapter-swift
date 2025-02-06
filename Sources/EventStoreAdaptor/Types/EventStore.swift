@@ -21,8 +21,8 @@ public enum EventStoreWriteError: Swift.Error {
     case otherError(String)
 }
 
-public enum EventStoreReadError {
-    case deserializationError(any Error)
-    case ioError(any Error)
+public enum EventStoreReadError: Swift.Error {
+    case deserializationError(any Swift.Error)
+    case IOError(any Swift.Error)
     case otherError(String)
 }

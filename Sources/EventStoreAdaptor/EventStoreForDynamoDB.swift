@@ -72,26 +72,37 @@ extension EventStoreForDynamoDB: EventStore {
     /// - Returns: 最新のスナップショット
     /// - Throws: クエリに失敗、あるいはデシリアライズに失敗した際にエラーが投げられる
     public func getLatestSnapshotById(aggregateId: AggregateId) async throws -> Aggregate? {
-        let output = try await client.query(
-            input: .init(
-                expressionAttributeNames: ["#aid": "aid", "#seq_nr": "seq_nr"],
-                expressionAttributeValues: [
-                    ":aid": .s(aggregateId.description), ":seq_nr": .n("0"),
-                ],
-                indexName: snapshotAidIndexName,
-                keyConditionExpression: "#aid = :aid AND #seq_nr = :seq_nr",
-                limit: 1,
-                tableName: snapshotTableName
+        let output: QueryOutput
+        do {
+            output = try await client.query(
+                input: .init(
+                    expressionAttributeNames: ["#aid": "aid", "#seq_nr": "seq_nr"],
+                    expressionAttributeValues: [
+                        ":aid": .s(aggregateId.description), ":seq_nr": .n("0"),
+                    ],
+                    indexName: snapshotAidIndexName,
+                    keyConditionExpression: "#aid = :aid AND #seq_nr = :seq_nr",
+                    limit: 1,
+                    tableName: snapshotTableName
+                )
             )
-        )
+        } catch {
+            throw EventStoreReadError.IOError(error)
+        }
+
+        guard let items = output.items else {
+            throw EventStoreReadError.otherError(
+                "No snapshot found for aggregate id: \(aggregateId)")
+        }
+        guard let item = items.first else {
+            return nil
+        }
         guard
-            let items = output.items,
-            let item = items.first,
             case .b(let data) = item["payload"],
             case .n(let versionString) = item["version"],
             let version = Int(versionString)
         else {
-            return nil
+            fatalError("payload or version is invalid")
         }
 
         var aggregate = try snapshotSerializer.deserialize(data)
@@ -111,23 +122,28 @@ extension EventStoreForDynamoDB: EventStore {
         aggregateId: AggregateId,
         sequenceNumber: Int
     ) async throws -> [Event] {
-        let output = try await client.query(
-            input: .init(
-                expressionAttributeNames: ["#aid": "aid", "#seq_nr": "seq_nr"],
-                expressionAttributeValues: [
-                    ":aid": .s(aggregateId.description),
-                    ":seq_nr": .n(String(sequenceNumber)),
-                ],
-                indexName: journalAidIndexName,
-                keyConditionExpression: "#aid = :aid AND #seq_nr >= :seq_nr",
-                tableName: journalTableName
-            ))
-        guard let items = output.items else {
-            throw EventStoreReadError.itemsIsNIl
+        let response: QueryOutput
+        do {
+            response = try await client.query(
+                input: .init(
+                    expressionAttributeNames: ["#aid": "aid", "#seq_nr": "seq_nr"],
+                    expressionAttributeValues: [
+                        ":aid": .s(aggregateId.description),
+                        ":seq_nr": .n(String(sequenceNumber)),
+                    ],
+                    indexName: journalAidIndexName,
+                    keyConditionExpression: "#aid = :aid AND #seq_nr >= :seq_nr",
+                    tableName: journalTableName
+                ))
+        } catch {
+            throw EventStoreReadError.IOError(error)
+        }
+        guard let items = response.items else {
+            return []
         }
         return try items.map { item in
             guard case .b(let data) = item["payload"] else {
-                throw EventStoreReadError.payloadNotFound
+                fatalError("payload is invalid")
             }
             return try eventSerializer.deserialize(data)
         }
@@ -160,12 +176,6 @@ extension EventStoreForDynamoDB: EventStore {
                 event: event, version: aggregate.version, aggregate: aggregate)
             try await tryPurgeExcessSnapshots(aggregateId: event.aggregateId)
         }
-    }
-
-    public enum EventStoreReadError: Error {
-        case itemsIsNIl
-        case payloadNotFound
-        case invalidSnapshot(output: QueryOutput)
     }
 
     private func createEventAndSnapshot(event: Event, aggregate: Aggregate) async throws {
@@ -335,11 +345,20 @@ extension EventStoreForDynamoDB: EventStore {
             input.filterExpression = "#ttl = :ttl"
         }
 
-        let output = try await client.query(input: input)
+        let response: QueryOutput
+        do {
+            response = try await client.query(input: input)
+        } catch {
+            throw EventStoreReadError.IOError(error)
+        }
 
-        guard let items = output.items else { throw EventStoreReadError.itemsIsNIl }
+        guard let items = response.items else {
+            throw EventStoreReadError.otherError(
+                "No snapshot found for aggregate id: \(aggregateId)"
+            )
+        }
 
-        return try items.map { item in
+        return items.map { item in
             guard
                 case .s(let aidString) = item["aid"],
                 let aggregateId = AggregateId(aidString),
@@ -348,7 +367,7 @@ extension EventStoreForDynamoDB: EventStore {
                 case .s(let pkey) = item["pkey"],
                 case .s(let skey) = item["skey"]
             else {
-                throw EventStoreReadError.invalidSnapshot(output: output)
+                fatalError("aid or seq_nr or pkey or skey is invalid")
             }
             logger.debug("EventStoreForDynamoDB.getLastSnapshotKeys aid: \(aggregateId)")
             logger.debug("EventStoreForDynamoDB.getLastSnapshotKeys seq_nr: \(sequenceNumber)")
