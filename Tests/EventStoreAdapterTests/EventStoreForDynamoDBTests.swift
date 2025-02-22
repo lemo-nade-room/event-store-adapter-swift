@@ -1,6 +1,6 @@
 @preconcurrency import AWSDynamoDB
 @preconcurrency import ClientRuntime
-import EventStoreAdaptor
+import EventStoreAdapter
 import Foundation
 import Logging
 import PackageTestUtil
@@ -82,7 +82,7 @@ struct UserAccount: Aggregate {
         var description: String { value.uuidString }
     }
 
-    enum Event: EventStoreAdaptor.Event {
+    enum Event: EventStoreAdapter.Event {
         case created(Created)
         case renamed(Renamed)
 

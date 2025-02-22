@@ -1,7 +1,7 @@
 import Foundation
 
 /// イベントのシリアライズ・デシリアライズを行う
-public struct EventSerializer<Event: EventStoreAdaptor.Event>: Sendable {
+public struct EventSerializer<Event: EventStoreAdapter.Event>: Sendable {
     /// イベントをシリアライズする関数
     public var serialize: @Sendable (Event) throws -> Data
     /// イベントをデシリアライズする関数
@@ -20,7 +20,7 @@ public struct EventSerializer<Event: EventStoreAdaptor.Event>: Sendable {
 }
 
 /// 集約のスナップショットのシリアライズ・デシリアライズを行う
-public struct SnapshotSerializer<Aggregate: EventStoreAdaptor.Aggregate>: Sendable {
+public struct SnapshotSerializer<Aggregate: EventStoreAdapter.Aggregate>: Sendable {
     /// 集約のスナップショットをシリアライズする関数
     public var serialize: @Sendable (Aggregate) throws -> Data
     /// 集約のスナップショットをデシリアライズする関数
