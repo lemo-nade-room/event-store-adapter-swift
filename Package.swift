@@ -3,13 +3,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "event-store-adaptor",
+    name: "event-store-adapter",
     platforms: [.macOS(.v15)],
     products: [
         .library(
-            name: "EventStoreAdaptor",
+            name: "EventStoreAdapter",
             targets: [
-                "EventStoreAdaptor"
+                "EventStoreAdapter"
             ]
         )
     ],
@@ -19,7 +19,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "EventStoreAdaptor",
+            name: "EventStoreAdapter",
             dependencies: [
                 .product(name: "AWSDynamoDB", package: "aws-sdk-swift"),
                 .product(name: "Crypto", package: "swift-crypto"),
@@ -27,9 +27,9 @@ let package = Package(
             swiftSettings: swiftSettings
         ),
         .testTarget(
-            name: "EventStoreAdaptorTests",
+            name: "EventStoreAdapterTests",
             dependencies: [
-                .target(name: "EventStoreAdaptor"),
+                .target(name: "EventStoreAdapter"),
                 .target(name: "PackageTestUtil"),
             ],
             swiftSettings: swiftSettings
@@ -37,7 +37,7 @@ let package = Package(
         .target(
             name: "PackageTestUtil",
             dependencies: [
-                .target(name: "EventStoreAdaptor")
+                .target(name: "EventStoreAdapter")
             ],
             swiftSettings: swiftSettings
         ),

@@ -1,8 +1,8 @@
 /// イベントストアを表すプロトコル
 public protocol EventStore: Sendable {
-    associatedtype Event: EventStoreAdaptor.Event
-    associatedtype Aggregate: EventStoreAdaptor.Aggregate
-    associatedtype AggregateId: EventStoreAdaptor.AggregateId
+    associatedtype Event: EventStoreAdapter.Event
+    associatedtype Aggregate: EventStoreAdapter.Aggregate
+    associatedtype AggregateId: EventStoreAdapter.AggregateId
 
     func persistEvent(event: Event, version: Int) async throws
 

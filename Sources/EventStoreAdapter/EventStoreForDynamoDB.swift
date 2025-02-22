@@ -17,8 +17,8 @@ public let defaultShardCount = 64
 
 /// DynamoDBを永続化に使用するイベントストア
 public struct EventStoreForDynamoDB<
-    Aggregate: EventStoreAdaptor.Aggregate,
-    Event: EventStoreAdaptor.Event
+    Aggregate: EventStoreAdapter.Aggregate,
+    Event: EventStoreAdapter.Event
 > where Aggregate.Id == Event.AggregateId {
     public var logger: Logger
     public var client: DynamoDBClient

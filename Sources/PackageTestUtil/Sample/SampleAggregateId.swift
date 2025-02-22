@@ -1,4 +1,4 @@
-import EventStoreAdaptor
+import EventStoreAdapter
 
 package struct SampleAggregateId: AggregateId {
     package var value: Int

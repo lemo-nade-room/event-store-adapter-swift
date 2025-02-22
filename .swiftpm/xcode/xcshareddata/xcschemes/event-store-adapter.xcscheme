@@ -15,9 +15,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "EventStoreAdaptor"
-               BuildableName = "EventStoreAdaptor"
-               BlueprintName = "EventStoreAdaptor"
+               BlueprintIdentifier = "EventStoreAdapter"
+               BuildableName = "EventStoreAdapter"
+               BlueprintName = "EventStoreAdapter"
                ReferencedContainer = "container:">
             </BuildableReference>
          </BuildActionEntry>
@@ -34,19 +34,9 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "DynamoDBAdaptorTests"
-               BuildableName = "DynamoDBAdaptorTests"
-               BlueprintName = "DynamoDBAdaptorTests"
-               ReferencedContainer = "container:">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "EventStoreAdaptorTests"
-               BuildableName = "EventStoreAdaptorTests"
-               BlueprintName = "EventStoreAdaptorTests"
+               BlueprintIdentifier = "EventStoreAdapterTests"
+               BuildableName = "EventStoreAdapterTests"
+               BlueprintName = "EventStoreAdapterTests"
                ReferencedContainer = "container:">
             </BuildableReference>
          </TestableReference>
@@ -72,9 +62,9 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "EventStoreAdaptor"
-            BuildableName = "EventStoreAdaptor"
-            BlueprintName = "EventStoreAdaptor"
+            BlueprintIdentifier = "EventStoreAdapter"
+            BuildableName = "EventStoreAdapter"
+            BlueprintName = "EventStoreAdapter"
             ReferencedContainer = "container:">
          </BuildableReference>
       </MacroExpansion>

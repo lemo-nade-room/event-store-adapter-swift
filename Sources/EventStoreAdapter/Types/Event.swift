@@ -2,7 +2,7 @@ import Foundation
 
 /// イベントを表すためのProtocol
 public protocol Event: Sendable, Hashable, Codable {
-    associatedtype AggregateId: EventStoreAdaptor.AggregateId
+    associatedtype AggregateId: EventStoreAdapter.AggregateId
     associatedtype Id: LosslessStringConvertible
     /// イベントID
     var id: Id { get }

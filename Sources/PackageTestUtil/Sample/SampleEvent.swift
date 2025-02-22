@@ -1,4 +1,4 @@
-import EventStoreAdaptor
+import EventStoreAdapter
 import Foundation
 
 package struct SampleEvent: Event {

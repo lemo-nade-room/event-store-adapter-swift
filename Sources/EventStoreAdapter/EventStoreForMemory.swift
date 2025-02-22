@@ -1,6 +1,6 @@
 public actor EventStoreForMemory<
-    Aggregate: EventStoreAdaptor.Aggregate,
-    Event: EventStoreAdaptor.Event
+    Aggregate: EventStoreAdapter.Aggregate,
+    Event: EventStoreAdapter.Event
 > where Aggregate.Id == Event.AggregateId {
     public var events: [String: [Event]]
     public var snapshots: [String: Aggregate]

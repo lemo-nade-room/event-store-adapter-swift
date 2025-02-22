@@ -1,7 +1,7 @@
-import EventStoreAdaptor
+import EventStoreAdapter
 import Foundation
 
-package struct SampleAggregate: EventStoreAdaptor.Aggregate {
+package struct SampleAggregate: EventStoreAdapter.Aggregate {
     package var id: SampleAggregateId
     package var value: String
     package var sequenceNumber: Int

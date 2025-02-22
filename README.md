@@ -1,8 +1,8 @@
 # event-store-adapter-swift
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-<a href="https://github.com/lemo-nade-room/event-store-adaptor-swift/actions/workflows/ci.yaml">
-    <img src="https://github.com/lemo-nade-room/event-store-adaptor-swift/actions/workflows/ci.yaml/badge.svg" alt="Testing Status">
+<a href="https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/ci.yaml">
+    <img src="https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/ci.yaml/badge.svg" alt="Testing Status">
 </a>
 
 このライブラリは、DynamoDBなどのデータストアを利用し、CQRS/Event Sourcingのためのイベントストア機能をSwiftで提供するためのライブラリです。  
@@ -13,9 +13,9 @@ Rust版の[Event Store Adapter (event-store-adapter-rs)](https://github.com/j5ik
 EventStoreを使えば、Event Sourcing対応リポジトリを簡単に実装できます。
 
 ```swift
-import EventStoreAdaptor
+import EventStoreAdapter
 
-struct UserAccountRepository<EventStore: EventStoreAdaptor.EventStore>
+struct UserAccountRepository<EventStore: EventStoreAdapter.EventStore>
 where
     EventStore.Aggregate == UserAccount,
     EventStore.Event == UserAccount.Event,
