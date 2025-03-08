@@ -1,0 +1,55 @@
+name: DocC GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Sources/**.swift'
+      - ".github/workflows/docc-github-pages.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          key: swift-build-package-resolved-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
+          path: .build
+
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0"
+
+      - name: Build DocC for EventStoreAdapter
+        run: |
+          swift package --allow-writing-to-directory ./docs/EventStoreAdapter \
+            generate-documentation --target EventStoreAdapter \
+            --disable-indexing \
+            --transform-for-static-hosting \
+            --hosting-base-path event-store-adapter-swift/EventStoreAdapter \
+            --output-path ./docs/EventStoreAdapter
+      - name: Build DocC for EventStoreAdapterDynamoDB
+        run: |
+          swift package --allow-writing-to-directory ./docs/EventStoreAdapterDynamoDB \
+            generate-documentation --target EventStoreAdapterDynamoDB \
+            --disable-indexing \
+            --transform-for-static-hosting \
+            --hosting-base-path event-store-adapter-swift/EventStoreAdapterDynamoDB \
+            --output-path ./docs/EventStoreAdapterDynamoDB
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - uses: actions/deploy-pages@v4
