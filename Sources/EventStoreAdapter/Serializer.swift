@@ -11,8 +11,12 @@ public struct EventSerializer<Event: EventStoreAdapter.Event>: Sendable {
     ///   - serialize: イベントをシリアライズする関数
     ///   - deserialize: イベントをデシリアライズする関数
     public init(
-        serialize: @escaping @Sendable (Event) throws -> Data = { try serializeForJSON($0) },
-        deserialize: @escaping @Sendable (Data) throws -> Event = { try deserializeFromJSON($0) }
+        serialize: @escaping @Sendable (Event) throws -> Data = {
+            try serializeForJSON($0, jsonEncoder: .init())
+        },
+        deserialize: @escaping @Sendable (Data) throws -> Event = {
+            try deserializeFromJSON($0, jsonDecoder: .init())
+        }
     ) {
         self.serialize = serialize
         self.deserialize = deserialize
@@ -31,10 +35,10 @@ public struct SnapshotSerializer<Aggregate: EventStoreAdapter.Aggregate>: Sendab
     ///   - deserialize: 集約のスナップショットをデシリアライズする関数
     public init(
         serialize: @escaping @Sendable (Aggregate) throws -> Data = {
-            try serializeForJSON($0)
+            try serializeForJSON($0, jsonEncoder: .init())
         },
         deserialize: @escaping @Sendable (Data) throws -> Aggregate = {
-            try deserializeFromJSON($0)
+            try deserializeFromJSON($0, jsonDecoder: .init())
         }
     ) {
         self.serialize = serialize
@@ -43,18 +47,22 @@ public struct SnapshotSerializer<Aggregate: EventStoreAdapter.Aggregate>: Sendab
 }
 
 /// JSONデータにシリアライズする関数
-/// - Parameter content: オブジェクト
+/// - Parameters:
+///   - content: シリアライズ対象
+///   - jsonEncoder: JSONエンコーダー
 /// - Throws: シリアライズに失敗した場合にスローされる
 /// - Returns: シリアライズされたJSONデータ
-public func serializeForJSON(_ content: some Codable) throws -> Data {
-    try EventStoreSetting.jsonEncoder.encode(content)
+public func serializeForJSON(_ content: some Codable, jsonEncoder: JSONEncoder) throws -> Data {
+    try jsonEncoder.encode(content)
 }
 /// JSONデータからデシリアライズする関数
-/// - Parameter data: JSONデータ
+/// - Parameters:
+///   - data: シリアライズされているデータ
+///   - jsonDecoder: JSONデコーダー
 /// - Throws: デシリアライズに失敗した場合にスローされる
 /// - Returns: デシリアライズされたオブジェクト
-public func deserializeFromJSON<T: Codable>(_ data: Data) throws -> T {
-    try EventStoreSetting.jsonDecoder.decode(T.self, from: data)
+public func deserializeFromJSON<T: Codable>(_ data: Data, jsonDecoder: JSONDecoder) throws -> T {
+    try jsonDecoder.decode(T.self, from: data)
 }
 public enum JSONDeserializeError: Error, Sendable {
     case notBase64Encoded
