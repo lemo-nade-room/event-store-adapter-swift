@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 extension UUID: @retroactive LosslessStringConvertible {
     /// - Parameter description: UUID文字列

@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// イベントを表すためのProtocol
 public protocol Event: Sendable, Hashable, Codable {

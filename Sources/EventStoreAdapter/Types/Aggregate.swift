@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// 集約を表すProtocol
 public protocol Aggregate: Sendable, Hashable, Codable {

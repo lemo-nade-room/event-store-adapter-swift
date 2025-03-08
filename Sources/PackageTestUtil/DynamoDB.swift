@@ -1,5 +1,5 @@
-@preconcurrency import AWSDynamoDB
-import Logging
+@preconcurrency package import AWSDynamoDB
+package import Logging
 
 package func createJournalTable(
     logger: Logger, client: DynamoDBClient, tableName: String, gsiName: String

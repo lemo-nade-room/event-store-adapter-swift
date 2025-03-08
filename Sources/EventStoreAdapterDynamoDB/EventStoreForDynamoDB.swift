@@ -1,7 +1,7 @@
-@preconcurrency import AWSDynamoDB
-import EventStoreAdapter
-import Foundation
-import Logging
+@preconcurrency public import AWSDynamoDB
+public import EventStoreAdapter
+public import Foundation
+public import Logging
 
 /// Loggerのデフォルト値
 public let defaultLogger = Logger(label: "event-store-for-dynamo-db")

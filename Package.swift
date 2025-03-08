@@ -59,6 +59,8 @@ let package = Package(
 )
 var swiftSettings: [SwiftSetting] {
     [
-        .enableExperimentalFeature("StrictConcurrency")
+        .enableExperimentalFeature("StrictConcurrency"),
+        .enableUpcomingFeature("ExistentialAny"),
+        .enableUpcomingFeature("InternalImportsByDefault"),
     ]
 }

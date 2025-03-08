@@ -1,5 +1,5 @@
 import EventStoreAdapter
-import Foundation
+package import Foundation
 
 package struct SampleAggregate: EventStoreAdapter.Aggregate {
     package var aid: AID

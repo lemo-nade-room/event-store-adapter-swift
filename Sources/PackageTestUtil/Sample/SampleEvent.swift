@@ -1,5 +1,5 @@
 import EventStoreAdapter
-import Foundation
+package import Foundation
 
 package struct SampleEvent: Event {
     package var id: Int

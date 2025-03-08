@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// イベントのシリアライズ・デシリアライズを行う
 public struct EventSerializer<Event: EventStoreAdapter.Event>: Sendable {
