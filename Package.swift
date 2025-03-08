@@ -6,12 +6,8 @@ let package = Package(
     name: "event-store-adapter",
     platforms: [.macOS(.v15)],
     products: [
-        .library(
-            name: "EventStoreAdapter",
-            targets: [
-                "EventStoreAdapter"
-            ]
-        )
+        .library(name: "EventStoreAdapter", targets: ["EventStoreAdapter"]),
+        .library(name: "EventStoreAdapterDynamoDB", targets: ["EventStoreAdapterDynamoDB"]),
     ],
     dependencies: [
         .package(url: "https://github.com/awslabs/aws-sdk-swift", from: "1.0.0"),
@@ -21,8 +17,7 @@ let package = Package(
         .target(
             name: "EventStoreAdapter",
             dependencies: [
-                .product(name: "AWSDynamoDB", package: "aws-sdk-swift"),
-                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "Crypto", package: "swift-crypto")
             ],
             swiftSettings: swiftSettings
         ),
@@ -35,9 +30,26 @@ let package = Package(
             swiftSettings: swiftSettings
         ),
         .target(
+            name: "EventStoreAdapterDynamoDB",
+            dependencies: [
+                .product(name: "AWSDynamoDB", package: "aws-sdk-swift"),
+                .target(name: "EventStoreAdapter"),
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .testTarget(
+            name: "EventStoreAdapterDynamoDBTests",
+            dependencies: [
+                .target(name: "EventStoreAdapterDynamoDB"),
+                .target(name: "PackageTestUtil"),
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .target(
             name: "PackageTestUtil",
             dependencies: [
-                .target(name: "EventStoreAdapter")
+                .target(name: "EventStoreAdapter"),
+                .target(name: "EventStoreAdapterDynamoDB"),
             ],
             swiftSettings: swiftSettings
         ),

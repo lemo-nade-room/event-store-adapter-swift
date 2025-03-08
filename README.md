@@ -44,6 +44,8 @@ where
 以下はリポジトリの使用例です。
 
 ```swift
+import EventStoreAdapterDynamoDB
+
 let eventStore = EventStoreForDynamoDB<UserAccount, UserAccount.Event>(
     client: try await DynamoDBClient(),
     journalTableName: journalTableName,

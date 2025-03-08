@@ -1,4 +1,5 @@
 @preconcurrency import AWSDynamoDB
+import EventStoreAdapter
 import Foundation
 import Logging
 

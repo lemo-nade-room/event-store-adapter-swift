@@ -1,6 +1,7 @@
 @preconcurrency import AWSDynamoDB
 @preconcurrency import ClientRuntime
 import EventStoreAdapter
+import EventStoreAdapterDynamoDB
 import Foundation
 import Logging
 import PackageTestUtil
