@@ -1,3 +1,4 @@
+/// メモリ内のイベントストア
 public actor EventStoreForMemory<
     Aggregate: EventStoreAdapter.Aggregate,
     Event: EventStoreAdapter.Event
