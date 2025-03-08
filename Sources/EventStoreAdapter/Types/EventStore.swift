@@ -1,7 +1,10 @@
 /// イベントストアを表すプロトコル
 public protocol EventStore: Sendable {
+    /// イベント型
     associatedtype Event: EventStoreAdapter.Event
+    /// 集約型
     associatedtype Aggregate: EventStoreAdapter.Aggregate
+    /// 集約ID型
     associatedtype AID: EventStoreAdapter.AggregateId
 
     /// イベントを永続化する
