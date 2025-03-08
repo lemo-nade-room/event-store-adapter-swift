@@ -2,22 +2,22 @@ import EventStoreAdapter
 import Foundation
 
 package struct SampleAggregate: EventStoreAdapter.Aggregate {
-    package var id: SampleAggregateId
+    package var aid: AID
     package var value: String
-    package var sequenceNumber: Int
+    package var seqNr: Int
     package var version: Int
     package var lastUpdatedAt: Date
 
     package init(
-        id: SampleAggregateId,
+        aid: AID,
         value: String,
-        sequenceNumber: Int,
+        seqNr: Int,
         version: Int,
         lastUpdatedAt: Date
     ) {
-        self.id = id
+        self.aid = aid
         self.value = value
-        self.sequenceNumber = sequenceNumber
+        self.seqNr = seqNr
         self.version = version
         self.lastUpdatedAt = lastUpdatedAt
     }

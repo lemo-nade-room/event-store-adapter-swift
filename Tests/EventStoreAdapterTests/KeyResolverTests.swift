@@ -13,21 +13,21 @@ import Testing
             (id: 5, expected: "sample_aggregate_id-1"),
         ]
     )
-    func resolvePartitionKey(id: Int, expected: String) async throws {
-        let sut = KeyResolver<SampleAggregateId>()
-        let id = SampleAggregateId(value: id)
+    func resolvePartitionKey(aid: Int, expected: String) async throws {
+        let sut = KeyResolver<SampleAggregate.AID>()
+        let aid = SampleAggregate.AID(value: aid)
 
-        let result = sut.resolvePartitionKey(id, 3)
+        let result = sut.resolvePartitionKey(aid, 3)
 
         #expect(result == expected)
     }
 
     @Test(.enabled(if: small))
     func resolveSortKey() async throws {
-        let sut = KeyResolver<SampleAggregateId>()
-        let id = SampleAggregateId(value: 2)
+        let sut = KeyResolver<SampleAggregate.AID>()
+        let aid = SampleAggregate.AID(value: 2)
 
-        let result = sut.resolveSortKey(id, 3)
+        let result = sut.resolveSortKey(aid, 3)
 
         #expect(result == "sample_aggregate_id-2-3")
     }

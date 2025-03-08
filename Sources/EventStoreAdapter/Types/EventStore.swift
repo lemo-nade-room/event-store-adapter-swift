@@ -2,16 +2,15 @@
 public protocol EventStore: Sendable {
     associatedtype Event: EventStoreAdapter.Event
     associatedtype Aggregate: EventStoreAdapter.Aggregate
-    associatedtype AggregateId: EventStoreAdapter.AggregateId
+    associatedtype AID: EventStoreAdapter.AggregateId
 
     func persistEvent(event: Event, version: Int) async throws
 
     func persistEventAndSnapshot(event: Event, aggregate: Aggregate) async throws
 
-    func getLatestSnapshotById(aggregateId: AggregateId) async throws -> Aggregate?
+    func getLatestSnapshotByAID(aid: AID) async throws -> Aggregate?
 
-    func getEventsByIdSinceSequenceNumber(aggregateId: AggregateId, sequenceNumber: Int)
-        async throws -> [Event]
+    func getEventsByAIDSinceSequenceNumber(aid: AID, seqNr: Int) async throws -> [Event]
 }
 
 public enum EventStoreWriteError: Swift.Error {

@@ -11,8 +11,8 @@ import Testing
 
         let event = SampleEvent(
             id: 2,
-            aggregateId: .init(value: 3),
-            sequenceNumber: 4,
+            aid: .init(value: 3),
+            seqNr: 4,
             occurredAt: ISO8601DateFormatter().date(from: "2024-01-24T12:34:56Z")!,
             isCreated: false
         )
@@ -31,9 +31,9 @@ import Testing
         let sut = SnapshotSerializer<SampleAggregate>()
 
         let aggregate = SampleAggregate(
-            id: .init(value: 5),
+            aid: .init(value: 5),
             value: "Hello, World!",
-            sequenceNumber: 23,
+            seqNr: 23,
             version: 45,
             lastUpdatedAt: ISO8601DateFormatter().date(from: "2020-01-01T00:00:00Z")!
         )

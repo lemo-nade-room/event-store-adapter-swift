@@ -19,7 +19,7 @@ public let defaultShardCount = 64
 public struct EventStoreForDynamoDB<
     Aggregate: EventStoreAdapter.Aggregate,
     Event: EventStoreAdapter.Event
-> where Aggregate.Id == Event.AggregateId {
+> where Aggregate.AID == Event.AID {
     public var logger: Logger
     public var client: DynamoDBClient
     public var journalTableName: String
@@ -29,7 +29,7 @@ public struct EventStoreForDynamoDB<
     public var shardCount: Int
     public var keepSnapshotCount: Int?
     public var deleteTTL: TimeInterval?
-    public var keyResolver: KeyResolver<Aggregate.Id>
+    public var keyResolver: KeyResolver<Aggregate.AID>
     public var eventSerializer: EventSerializer<Event>
     public var snapshotSerializer: SnapshotSerializer<Aggregate>
 
@@ -43,7 +43,7 @@ public struct EventStoreForDynamoDB<
         shardCount: Int? = nil,
         keepSnapshotCount: Int? = nil,
         deleteTTL: TimeInterval? = nil,
-        keyResolver: KeyResolver<Aggregate.Id>? = nil,
+        keyResolver: KeyResolver<Aggregate.AID>? = nil,
         eventSerializer: EventSerializer<Event>? = nil,
         snapshotSerializer: SnapshotSerializer<Aggregate>? = nil
     ) {
@@ -64,21 +64,21 @@ public struct EventStoreForDynamoDB<
 
 extension EventStoreForDynamoDB: EventStore {
     /// 集約ID
-    public typealias AggregateId = Aggregate.Id
+    public typealias AID = Aggregate.AID
 
     /// 最新のスナップショットを集約IDで取得する。
     /// 存在しない場合はnilを消す
-    /// - Parameter aggregateId: 集約ID
+    /// - Parameter aid: 集約ID
     /// - Returns: 最新のスナップショット
     /// - Throws: クエリに失敗、あるいはデシリアライズに失敗した際にエラーが投げられる
-    public func getLatestSnapshotById(aggregateId: AggregateId) async throws -> Aggregate? {
+    public func getLatestSnapshotByAID(aid: AID) async throws -> Aggregate? {
         let output: QueryOutput
         do {
             output = try await client.query(
                 input: .init(
                     expressionAttributeNames: ["#aid": "aid", "#seq_nr": "seq_nr"],
                     expressionAttributeValues: [
-                        ":aid": .s(aggregateId.description), ":seq_nr": .n("0"),
+                        ":aid": .s(aid.description), ":seq_nr": .n("0"),
                     ],
                     indexName: snapshotAidIndexName,
                     keyConditionExpression: "#aid = :aid AND #seq_nr = :seq_nr",
@@ -92,7 +92,7 @@ extension EventStoreForDynamoDB: EventStore {
 
         guard let items = output.items else {
             throw EventStoreReadError.otherError(
-                "No snapshot found for aggregate id: \(aggregateId)")
+                "No snapshot found for aggregate id: \(aid)")
         }
         guard let item = items.first else {
             return nil
@@ -107,29 +107,26 @@ extension EventStoreForDynamoDB: EventStore {
 
         var aggregate = try snapshotSerializer.deserialize(data)
         logger.debug(
-            "EventStoreForDynamoDB.getLatestSnapshotById seq_nr: \(aggregate.sequenceNumber)")
+            "EventStoreForDynamoDB.getLatestSnapshotByAID seq_nr: \(aggregate.seqNr)")
         aggregate.version = version
         return aggregate
     }
 
     /// 指定したシーケンス番号から、指定した集約の全てのイベントを取得する
     /// - Parameters:
-    ///   - aggregateId: 集約ID
-    ///   - sequenceNumber: シーケンス番号
+    ///   - aid: 集約ID
+    ///   - seqNr: シーケンス番号
     /// - Returns: イベント一覧
     /// - Throws: クエリに失敗した場合にエラーが投げられる
-    public func getEventsByIdSinceSequenceNumber(
-        aggregateId: AggregateId,
-        sequenceNumber: Int
-    ) async throws -> [Event] {
+    public func getEventsByAIDSinceSequenceNumber(aid: AID, seqNr: Int) async throws -> [Event] {
         let response: QueryOutput
         do {
             response = try await client.query(
                 input: .init(
                     expressionAttributeNames: ["#aid": "aid", "#seq_nr": "seq_nr"],
                     expressionAttributeValues: [
-                        ":aid": .s(aggregateId.description),
-                        ":seq_nr": .n(String(sequenceNumber)),
+                        ":aid": .s(aid.description),
+                        ":seq_nr": .n(String(seqNr)),
                     ],
                     indexName: journalAidIndexName,
                     keyConditionExpression: "#aid = :aid AND #seq_nr >= :seq_nr",
@@ -160,7 +157,7 @@ extension EventStoreForDynamoDB: EventStore {
         }
 
         try await updateEventAndSnapshotOpt(event: event, version: version, aggregate: nil)
-        try await tryPurgeExcessSnapshots(aggregateId: event.aggregateId)
+        try await tryPurgeExcessSnapshots(aid: event.aid)
     }
 
     /// イベントと集約のスナップショットを永続化する
@@ -174,13 +171,13 @@ extension EventStoreForDynamoDB: EventStore {
         } else {
             try await updateEventAndSnapshotOpt(
                 event: event, version: aggregate.version, aggregate: aggregate)
-            try await tryPurgeExcessSnapshots(aggregateId: event.aggregateId)
+            try await tryPurgeExcessSnapshots(aid: event.aid)
         }
     }
 
     private func createEventAndSnapshot(event: Event, aggregate: Aggregate) async throws {
         var transactWriteItems: [DynamoDBClientTypes.TransactWriteItem] = [
-            try .init(put: putSnapshot(event: event, sequenceNumber: 0, aggregate: aggregate)),
+            try .init(put: putSnapshot(event: event, seqNr: 0, aggregate: aggregate)),
             try .init(put: putJournal(event: event)),
         ]
         if keepSnapshotCount != nil {
@@ -188,7 +185,7 @@ extension EventStoreForDynamoDB: EventStore {
                 .init(
                     put: try putSnapshot(
                         event: event,
-                        sequenceNumber: aggregate.sequenceNumber,
+                        seqNr: aggregate.seqNr,
                         aggregate: aggregate
                     )
                 )
@@ -209,7 +206,7 @@ extension EventStoreForDynamoDB: EventStore {
             .init(
                 update: try updateSnapshot(
                     event: event,
-                    sequenceNumber: 0,
+                    seqNr: 0,
                     version: version,
                     aggregate: aggregate
                 )
@@ -220,7 +217,7 @@ extension EventStoreForDynamoDB: EventStore {
             try transactItems.append(
                 .init(
                     put: putSnapshot(
-                        event: event, sequenceNumber: aggregate.sequenceNumber, aggregate: aggregate
+                        event: event, seqNr: aggregate.seqNr, aggregate: aggregate
                     )
                 )
             )
@@ -229,17 +226,17 @@ extension EventStoreForDynamoDB: EventStore {
         logger.debug("EventStoreForDynamoDB.updateEventAndSnapshotOpt output: \(output)")
     }
 
-    private func deleteExcessSnapshots(aggregateId: Aggregate.Id) async throws {
+    private func deleteExcessSnapshots(aid: Aggregate.AID) async throws {
         guard let keepSnapshotCount else { return }
 
-        let snapshotCount = try await getSnapshotCountForWrite(aggregateId: aggregateId)
+        let snapshotCount = try await getSnapshotCountForWrite(aid: aid)
         let excessCount = snapshotCount - keepSnapshotCount
 
         guard excessCount > 0 else { return }
         logger.debug("EventStoreForDynamoDB.deleteExcessSnapshots excess_count: \(excessCount)")
 
         let keys = try await getLastSnapshotKeysForWrite(
-            aggregateId: aggregateId, excessCount: excessCount)
+            aid: aid, excessCount: excessCount)
         logger.debug("EventStoreForDynamoDB.deleteExcessSnapshots keys: \(keys)")
 
         if keys.isEmpty { return }
@@ -257,10 +254,10 @@ extension EventStoreForDynamoDB: EventStore {
         logger.debug("EventStoreForDynamoDB.deleteExcessSnapshots result: \(result)")
     }
 
-    private func updateTTLOfExcessSnapshots(aggregateId: Aggregate.Id) async throws {
+    private func updateTTLOfExcessSnapshots(aid: Aggregate.AID) async throws {
         guard let keepSnapshotCount, let deleteTTL else { return }
 
-        let snapshotCount = try await getSnapshotCountForWrite(aggregateId: aggregateId)
+        let snapshotCount = try await getSnapshotCountForWrite(aid: aid)
         let excessCount = snapshotCount - keepSnapshotCount
 
         guard excessCount > 0 else { return }
@@ -268,7 +265,7 @@ extension EventStoreForDynamoDB: EventStore {
         logger.debug(
             "EventStoreForDynamoDB.updateTTLOfExcessSnapshots excess_count: \(excessCount)")
         let keys = try await getLastSnapshotKeysForWrite(
-            aggregateId: aggregateId,
+            aid: aid,
             excessCount: excessCount
         )
         logger.debug("EventStoreForDynamoDB.updateTTLOfExcessSnapshots keys: \(keys)")
@@ -294,22 +291,22 @@ extension EventStoreForDynamoDB: EventStore {
     }
 
     private func getLastSnapshotKeysForWrite(
-        aggregateId: Aggregate.Id,
+        aid: Aggregate.AID,
         excessCount: Int
     ) async throws -> [(pkey: String, skey: String)] {
-        try await getLastSnapshotKeys(aggregateId: aggregateId, limit: excessCount)
+        try await getLastSnapshotKeys(aid: aid, limit: excessCount)
     }
 
-    private func getSnapshotCountForWrite(aggregateId: Aggregate.Id) async throws -> Int {
-        let count = try await getSnapshotCount(aggregateId: aggregateId)
+    private func getSnapshotCountForWrite(aid: Aggregate.AID) async throws -> Int {
+        let count = try await getSnapshotCount(aid: aid)
         return count - 1
     }
 
-    private func getSnapshotCount(aggregateId: Aggregate.Id) async throws -> Int {
+    private func getSnapshotCount(aid: Aggregate.AID) async throws -> Int {
         let output = try await client.query(
             input: .init(
                 expressionAttributeNames: ["#aid": "aid"],
-                expressionAttributeValues: [":aid": .s(aggregateId.description)],
+                expressionAttributeValues: [":aid": .s(aid.description)],
                 indexName: snapshotAidIndexName,
                 keyConditionExpression: "#aid = :aid",
                 select: .count,
@@ -320,7 +317,7 @@ extension EventStoreForDynamoDB: EventStore {
     }
 
     private func getLastSnapshotKeys(
-        aggregateId: Aggregate.Id,
+        aid: Aggregate.AID,
         limit: Int
     ) async throws -> [(pkey: String, skey: String)] {
         var input = QueryInput(
@@ -329,7 +326,7 @@ extension EventStoreForDynamoDB: EventStore {
                 "#seq_nr": "seq_nr",
             ],
             expressionAttributeValues: [
-                ":aid": .s(aggregateId.description),
+                ":aid": .s(aid.description),
                 ":seq_nr": .n("0"),
             ],
             indexName: snapshotAidIndexName,
@@ -354,40 +351,40 @@ extension EventStoreForDynamoDB: EventStore {
 
         guard let items = response.items else {
             throw EventStoreReadError.otherError(
-                "No snapshot found for aggregate id: \(aggregateId)"
+                "No snapshot found for aggregate id: \(aid)"
             )
         }
 
         return items.map { item in
             guard
                 case .s(let aidString) = item["aid"],
-                let aggregateId = AggregateId(aidString),
-                case .n(let sequenceNumberString) = item["seq_nr"],
-                let sequenceNumber = Int(sequenceNumberString),
+                let aid = AID(aidString),
+                case .n(let seqNrString) = item["seq_nr"],
+                let seqNr = Int(seqNrString),
                 case .s(let pkey) = item["pkey"],
                 case .s(let skey) = item["skey"]
             else {
                 fatalError("aid or seq_nr or pkey or skey is invalid")
             }
-            logger.debug("EventStoreForDynamoDB.getLastSnapshotKeys aid: \(aggregateId)")
-            logger.debug("EventStoreForDynamoDB.getLastSnapshotKeys seq_nr: \(sequenceNumber)")
+            logger.debug("EventStoreForDynamoDB.getLastSnapshotKeys aid: \(aid)")
+            logger.debug("EventStoreForDynamoDB.getLastSnapshotKeys seq_nr: \(seqNr)")
             return (pkey, skey)
         }
     }
 
     private func putSnapshot(
         event: Event,
-        sequenceNumber: Int,
+        seqNr: Int,
         aggregate: Aggregate
     ) throws -> DynamoDBClientTypes.Put {
-        let pkey = resolvePkey(id: event.aggregateId, shardCount: shardCount)
-        let skey = resolveSkey(id: event.aggregateId, sequenceNumber: sequenceNumber)
+        let pkey = resolvePkey(id: event.aid, shardCount: shardCount)
+        let skey = resolveSkey(id: event.aid, seqNr: seqNr)
         let payload = try snapshotSerializer.serialize(aggregate)
         logger.debug("↓ EventStoreForDynamoDB.putSnapshot ↓")
         logger.debug("pkey: \(pkey)")
         logger.debug("skey: \(skey)")
-        logger.debug("aid: \(event.aggregateId.description)")
-        logger.debug("seq_nr: \(sequenceNumber)")
+        logger.debug("aid: \(event.aid.description)")
+        logger.debug("seq_nr: \(seqNr)")
         logger.debug("↑ EventStoreForDynamoDB.putSnapshot ↑")
         return .init(
             conditionExpression: "attribute_not_exists(pkey) AND attribute_not_exists(skey)",
@@ -395,8 +392,8 @@ extension EventStoreForDynamoDB: EventStore {
                 "pkey": .s(pkey),
                 "skey": .s(skey),
                 "payload": .b(payload),
-                "aid": .s(event.aggregateId.description),
-                "seq_nr": .n(String(sequenceNumber)),
+                "aid": .s(event.aid.description),
+                "seq_nr": .n(String(seqNr)),
                 "version": .n("1"),
                 "ttl": .n("0"),
                 "last_updated_at": .n(String(Int(event.occurredAt.timeIntervalSince1970 * 1000))),
@@ -407,17 +404,17 @@ extension EventStoreForDynamoDB: EventStore {
 
     private func updateSnapshot(
         event: Event,
-        sequenceNumber: Int,
+        seqNr: Int,
         version: Int,
         aggregate: Aggregate?
     ) throws -> DynamoDBClientTypes.Update {
-        let pkey = resolvePkey(id: event.aggregateId, shardCount: shardCount)
-        let skey = resolveSkey(id: event.aggregateId, sequenceNumber: sequenceNumber)
+        let pkey = resolvePkey(id: event.aid, shardCount: shardCount)
+        let skey = resolveSkey(id: event.aid, seqNr: seqNr)
         logger.debug("↓ EventStoreForDynamoDB.updateSnapshot ↓")
         logger.debug("pkey: \(pkey)")
         logger.debug("skey: \(skey)")
-        logger.debug("aid: \(event.aggregateId.description)")
-        logger.debug("seq_nr: \(sequenceNumber)")
+        logger.debug("aid: \(event.aid.description)")
+        logger.debug("seq_nr: \(seqNr)")
         logger.debug("↑ EventStoreForDynamoDB.updateSnapshot ↑")
         var updateSnapshot = DynamoDBClientTypes.Update(
             conditionExpression: "#version = :before_version",
@@ -446,31 +443,31 @@ extension EventStoreForDynamoDB: EventStore {
                 "#payload": "payload",
             ]) { $1 }
             updateSnapshot.expressionAttributeValues?.merge([
-                ":seq_nr": .n(String(sequenceNumber)),
+                ":seq_nr": .n(String(seqNr)),
                 ":payload": .b(payload),
             ]) { $1 }
         }
         return updateSnapshot
     }
 
-    private func resolvePkey(id: AggregateId, shardCount: Int) -> String {
+    private func resolvePkey(id: AID, shardCount: Int) -> String {
         keyResolver.resolvePartitionKey(id, shardCount)
     }
 
-    private func resolveSkey(id: Aggregate.Id, sequenceNumber: Int) -> String {
-        keyResolver.resolveSortKey(id, sequenceNumber)
+    private func resolveSkey(id: AID, seqNr: Int) -> String {
+        keyResolver.resolveSortKey(id, seqNr)
     }
 
     private func putJournal(event: Event) throws -> DynamoDBClientTypes.Put {
         return .init(
             conditionExpression: "attribute_not_exists(pkey) AND attribute_not_exists(skey)",
             item: [
-                "pkey": .s(resolvePkey(id: event.aggregateId, shardCount: shardCount)),
+                "pkey": .s(resolvePkey(id: event.aid, shardCount: shardCount)),
                 "skey": .s(
-                    resolveSkey(id: event.aggregateId, sequenceNumber: event.sequenceNumber)
+                    resolveSkey(id: event.aid, seqNr: event.seqNr)
                 ),
-                "aid": .s(event.aggregateId.description),
-                "seq_nr": .n(String(event.sequenceNumber)),
+                "aid": .s(event.aid.description),
+                "seq_nr": .n(String(event.seqNr)),
                 "payload": .b(try eventSerializer.serialize(event)),
                 "occurered_at": .n(String(Int(event.occurredAt.timeIntervalSince1970 * 1000))),
             ],
@@ -478,13 +475,13 @@ extension EventStoreForDynamoDB: EventStore {
         )
     }
 
-    private func tryPurgeExcessSnapshots(aggregateId: Aggregate.Id) async throws {
+    private func tryPurgeExcessSnapshots(aid: Aggregate.AID) async throws {
         guard keepSnapshotCount != nil else { return }
 
         if deleteTTL != nil {
-            try await updateTTLOfExcessSnapshots(aggregateId: aggregateId)
+            try await updateTTLOfExcessSnapshots(aid: aid)
         } else {
-            try await deleteExcessSnapshots(aggregateId: aggregateId)
+            try await deleteExcessSnapshots(aid: aid)
         }
     }
 }

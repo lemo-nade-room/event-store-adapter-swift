@@ -3,21 +3,21 @@ import Foundation
 
 package struct SampleEvent: Event {
     package var id: Int
-    package var aggregateId: SampleAggregateId
-    package var sequenceNumber: Int
+    package var aid: SampleAggregate.AID
+    package var seqNr: Int
     package var occurredAt: Date
     package var isCreated: Bool
 
     package init(
         id: Int,
-        aggregateId: SampleAggregateId,
-        sequenceNumber: Int,
+        aid: SampleAggregate.AID,
+        seqNr: Int,
         occurredAt: Date,
         isCreated: Bool
     ) {
         self.id = id
-        self.aggregateId = aggregateId
-        self.sequenceNumber = sequenceNumber
+        self.aid = aid
+        self.seqNr = seqNr
         self.occurredAt = occurredAt
         self.isCreated = isCreated
     }

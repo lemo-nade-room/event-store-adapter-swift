@@ -2,12 +2,12 @@ import Foundation
 
 /// 集約を表すProtocol
 public protocol Aggregate: Sendable, Hashable, Codable {
-    associatedtype Id: AggregateId
+    associatedtype AID: AggregateId
 
-    var id: Id { get }
+    var aid: AID { get }
 
     /// シーケンス番号
-    var sequenceNumber: Int { get }
+    var seqNr: Int { get }
 
     /// バージョン
     var version: Int { get set }
