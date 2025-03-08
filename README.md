@@ -19,7 +19,7 @@ struct UserAccountRepository<EventStore: EventStoreAdapter.EventStore>
 where
     EventStore.Aggregate == UserAccount,
     EventStore.Event == UserAccount.Event,
-    EventStore.AggregateId == UserAccount.Id
+    EventStore.AID == UserAccount.Id
 {
     var eventStore: EventStore
     
@@ -31,14 +31,11 @@ where
         try await eventStore.persistEventAndSnapshot(event: event, aggregate: snapshot)
     }
     
-    func findById(id: UserAccount.Id) async throws -> UserAccount? {
-        guard let snapshot = try await eventStore.getLatestSnapshotById(aggregateId: id) else {
+    func find(aid: UserAccount.AID) async throws -> UserAccount? {
+        guard let snapshot = try await eventStore.getLatestSnapshotById(aid: aid) else {
             return nil
         }
-        let events = eventStore.getEventsByIdSinceSequenceNumber(
-            aggregateId: id,
-            sequenceNumber: snapshot.sequenceNumber + 1
-        )
+        let events = eventStore.getEventsByIdSinceSequenceNumber(aid: aid, seqNr: snapshot.seqNr + 1)
         return UserAccount.replay(events, snapshot)
     }
 }
@@ -47,6 +44,8 @@ where
 以下はリポジトリの使用例です。
 
 ```swift
+import EventStoreAdapterDynamoDB
+
 let eventStore = EventStoreForDynamoDB<UserAccount, UserAccount.Event>(
     client: try await DynamoDBClient(),
     journalTableName: journalTableName,
@@ -58,7 +57,7 @@ let eventStore = EventStoreForDynamoDB<UserAccount, UserAccount.Event>(
 
 let repository = UserAccountRepository(eventStore: eventStore)
 
-guard var userAccount = try await repository.findById(id: userAccountId) else {
+guard var userAccount = try await repository.find(aid: userAccountAID) else {
     fatalError()
 }
 

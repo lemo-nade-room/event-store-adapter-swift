@@ -1,6 +1,7 @@
 @preconcurrency import AWSDynamoDB
 @preconcurrency import ClientRuntime
 import EventStoreAdapter
+import EventStoreAdapterDynamoDB
 import Foundation
 import Logging
 import PackageTestUtil
@@ -8,26 +9,26 @@ import PackageTestUtil
 import Testing
 
 struct UserAccount: Aggregate {
-    var id: Id
+    var aid: AID
     var name: String
-    var sequenceNumber: Int
+    var seqNr: Int
     var version: Int
     var lastUpdatedAt: Date
 
-    static func make(id: Id, name: String) -> (Self, Event) {
+    static func make(aid: AID, name: String) -> (Self, Event) {
         var mySelf = Self.init(
-            id: id,
+            aid: aid,
             name: name,
-            sequenceNumber: 0,
+            seqNr: 0,
             version: 1,
             lastUpdatedAt: Date()
         )
-        mySelf.sequenceNumber += 1
+        mySelf.seqNr += 1
         let event: Event = .created(
             .init(
-                id: .init(),
-                aggregateId: id,
-                sequenceNumber: mySelf.sequenceNumber,
+                aid: .init(),
+                aggregateAID: aid,
+                seqNr: mySelf.seqNr,
                 name: mySelf.name,
                 occurredAt: Date()
             )
@@ -52,12 +53,12 @@ struct UserAccount: Aggregate {
             throw Error.alreadyRenamed(name: name)
         }
         self.name = name
-        self.sequenceNumber += 1
+        self.seqNr += 1
         return .renamed(
             .init(
-                id: .init(),
-                aggregateId: id,
-                sequenceNumber: sequenceNumber,
+                aid: .init(),
+                aggregateAID: aid,
+                seqNr: seqNr,
                 name: name,
                 occurredAt: Date()
             )
@@ -68,7 +69,7 @@ struct UserAccount: Aggregate {
         case alreadyRenamed(name: String)
     }
 
-    struct Id: AggregateId {
+    struct AID: AggregateId {
         static let name = "UserAccount"
         var value: UUID
 
@@ -88,14 +89,14 @@ struct UserAccount: Aggregate {
 
         var id: UUID {
             switch self {
-            case .created(let event): event.id
-            case .renamed(let event): event.id
+            case .created(let event): event.aid
+            case .renamed(let event): event.aid
             }
         }
-        var aggregateId: Id {
+        var aid: AID {
             switch self {
-            case .created(let event): event.aggregateId
-            case .renamed(let event): event.aggregateId
+            case .created(let event): event.aggregateAID
+            case .renamed(let event): event.aggregateAID
             }
         }
         var occurredAt: Date {
@@ -104,10 +105,10 @@ struct UserAccount: Aggregate {
             case .renamed(let event): event.occurredAt
             }
         }
-        var sequenceNumber: Int {
+        var seqNr: Int {
             switch self {
-            case .created(let event): event.sequenceNumber
-            case .renamed(let event): event.sequenceNumber
+            case .created(let event): event.seqNr
+            case .renamed(let event): event.seqNr
             }
         }
         var isCreated: Bool {
@@ -118,36 +119,36 @@ struct UserAccount: Aggregate {
         }
 
         struct Created: Sendable, Hashable, Codable {
-            var id: UUID
-            var aggregateId: UserAccount.Id
-            var sequenceNumber: Int
+            var aid: UUID
+            var aggregateAID: UserAccount.AID
+            var seqNr: Int
             var name: String
             var occurredAt: Date
         }
         struct Renamed: Sendable, Hashable, Codable {
-            var id: UUID
-            var aggregateId: UserAccount.Id
-            var sequenceNumber: Int
+            var aid: UUID
+            var aggregateAID: UserAccount.AID
+            var seqNr: Int
             var name: String
             var occurredAt: Date
         }
     }
 }
 
-func findById<Store: EventStore>(
+func findByAID<Store: EventStore>(
     store: Store,
-    id: UserAccount.Id
+    aid: UserAccount.AID
 ) async throws -> UserAccount?
 where
     Store.Aggregate == UserAccount,
-    Store.AggregateId == UserAccount.Id,
+    Store.AID == UserAccount.AID,
     Store.Event == UserAccount.Event
 {
-    guard let snapshot = try await store.getLatestSnapshotById(aggregateId: id) else {
+    guard let snapshot = try await store.getLatestSnapshotByAID(aid: aid) else {
         return nil
     }
-    let events = try await store.getEventsByIdSinceSequenceNumber(
-        aggregateId: id, sequenceNumber: snapshot.sequenceNumber + 1)
+    let events = try await store.getEventsByAIDSinceSequenceNumber(
+        aid: aid, seqNr: snapshot.seqNr + 1)
     return UserAccount.replay(events: events, snapshot: snapshot)
 }
 
@@ -212,61 +213,61 @@ where
             deleteTTL: 5
         )
 
-        let id = UserAccount.Id(value: UUID())
+        let aid = UserAccount.AID(value: UUID())
 
-        var (userAccount, event) = UserAccount.make(id: id, name: "test")
+        var (userAccount, event) = UserAccount.make(aid: aid, name: "test")
         try await eventStore.persistEventAndSnapshot(event: event, aggregate: userAccount)
 
-        userAccount = try #require(try await findById(store: eventStore, id: id))
+        userAccount = try #require(try await findByAID(store: eventStore, aid: aid))
         #expect(userAccount.name == "test")
-        #expect(userAccount.sequenceNumber == 1)
+        #expect(userAccount.seqNr == 1)
         #expect(userAccount.version == 1)
 
         event = try userAccount.rename(name: "test2")
         try await eventStore.persistEvent(event: event, version: userAccount.version)
 
-        userAccount = try #require(try await findById(store: eventStore, id: id))
+        userAccount = try #require(try await findByAID(store: eventStore, aid: aid))
         #expect(userAccount.name == "test2")
-        #expect(userAccount.sequenceNumber == 2)
+        #expect(userAccount.seqNr == 2)
         #expect(userAccount.version == 2)
 
         event = try userAccount.rename(name: "test3")
         try await eventStore.persistEventAndSnapshot(event: event, aggregate: userAccount)
 
-        userAccount = try #require(try await findById(store: eventStore, id: id))
+        userAccount = try #require(try await findByAID(store: eventStore, aid: aid))
         #expect(userAccount.name == "test3")
-        #expect(userAccount.sequenceNumber == 3)
+        #expect(userAccount.seqNr == 3)
         #expect(userAccount.version == 3)
     }
 
     @Test(.enabled(if: small)) func eventStoreOnMemory() async throws {
         let eventStore = EventStoreForMemory<UserAccount, UserAccount.Event>()
 
-        let idValue = UUID()
-        let id = UserAccount.Id(value: idValue)
+        let aidValue = UUID()
+        let aid = UserAccount.AID(value: aidValue)
 
-        var (userAccount, event) = UserAccount.make(id: id, name: "test")
+        var (userAccount, event) = UserAccount.make(aid: aid, name: "test")
         try await eventStore.persistEventAndSnapshot(event: event, aggregate: userAccount)
 
-        userAccount = try #require(try await findById(store: eventStore, id: id))
+        userAccount = try #require(try await findByAID(store: eventStore, aid: aid))
         #expect(userAccount.name == "test")
-        #expect(userAccount.sequenceNumber == 1)
+        #expect(userAccount.seqNr == 1)
         #expect(userAccount.version == 1)
 
         event = try userAccount.rename(name: "test2")
         try await eventStore.persistEvent(event: event, version: userAccount.version)
 
-        userAccount = try #require(try await findById(store: eventStore, id: id))
+        userAccount = try #require(try await findByAID(store: eventStore, aid: aid))
         #expect(userAccount.name == "test2")
-        #expect(userAccount.sequenceNumber == 2)
+        #expect(userAccount.seqNr == 2)
         #expect(userAccount.version == 2)
 
         event = try userAccount.rename(name: "test3")
         try await eventStore.persistEventAndSnapshot(event: event, aggregate: userAccount)
 
-        userAccount = try #require(try await findById(store: eventStore, id: id))
+        userAccount = try #require(try await findByAID(store: eventStore, aid: aid))
         #expect(userAccount.name == "test3")
-        #expect(userAccount.sequenceNumber == 3)
+        #expect(userAccount.seqNr == 3)
         #expect(userAccount.version == 3)
     }
 }

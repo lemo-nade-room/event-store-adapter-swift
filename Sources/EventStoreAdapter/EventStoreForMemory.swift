@@ -1,7 +1,8 @@
+/// メモリ内のイベントストア
 public actor EventStoreForMemory<
     Aggregate: EventStoreAdapter.Aggregate,
     Event: EventStoreAdapter.Event
-> where Aggregate.Id == Event.AggregateId {
+> where Aggregate.AID == Event.AID {
     public var events: [String: [Event]]
     public var snapshots: [String: Aggregate]
 
@@ -12,13 +13,13 @@ public actor EventStoreForMemory<
 }
 
 extension EventStoreForMemory: EventStore {
-    public typealias AggreageId = Aggregate.Id
+    public typealias AID = Aggregate.AID
 
     public func persistEvent(event: Event, version: Int) async throws {
         if event.isCreated {
             fatalError("EventStoreForMemory does not support create event.")
         }
-        let aid = event.aggregateId.description
+        let aid = event.aid.description
         guard var snapshot = snapshots[aid] else {
             throw EventStoreWriteError.otherError(aid)
         }
@@ -34,7 +35,7 @@ extension EventStoreForMemory: EventStore {
     }
 
     public func persistEventAndSnapshot(event: Event, aggregate: Aggregate) async throws {
-        let aid = event.aggregateId.description
+        let aid = event.aid.description
         var newVersion = 1
         if !event.isCreated {
             guard let snapshot = snapshots[aid] else {
@@ -55,14 +56,14 @@ extension EventStoreForMemory: EventStore {
         snapshots[aid] = aggregate
     }
 
-    public func getLatestSnapshotById(aggregateId: Aggregate.Id) async throws -> Aggregate? {
-        snapshots[aggregateId.description]
+    public func getLatestSnapshotByAID(aid: Aggregate.AID) async throws -> Aggregate? {
+        snapshots[aid.description]
     }
 
-    public func getEventsByIdSinceSequenceNumber(
-        aggregateId: Aggregate.Id,
-        sequenceNumber: Int
+    public func getEventsByAIDSinceSequenceNumber(
+        aid: Aggregate.AID,
+        seqNr: Int
     ) async throws -> [Event] {
-        events[aggregateId.description, default: []].filter { $0.sequenceNumber >= sequenceNumber }
+        events[aid.description, default: []].filter { $0.seqNr >= seqNr }
     }
 }
