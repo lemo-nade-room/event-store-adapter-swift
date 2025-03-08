@@ -14,14 +14,3 @@ public protocol Aggregate: Sendable, Hashable, Codable {
 
     var lastUpdatedAt: Date { get }
 }
-
-extension Aggregate {
-    /// バージョンを設定する
-    /// - Parameter version: バージョン
-    /// - Returns: ``Self``
-    public func withVersion(_ version: Int) -> Self {
-        var copy = self
-        copy.version = version
-        return copy
-    }
-}
