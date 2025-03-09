@@ -1,7 +1,7 @@
-@preconcurrency package import AWSDynamoDB
-package import Logging
+@preconcurrency import AWSDynamoDB
+import Logging
 
-package func createJournalTable(
+func createJournalTable(
     logger: Logger, client: DynamoDBClient, tableName: String, gsiName: String
 ) async throws {
     let output = try await client.listTables(input: .init())
@@ -43,7 +43,7 @@ package func createJournalTable(
     }
 }
 
-package func createSnapshotTable(
+func createSnapshotTable(
     logger: Logger, client: DynamoDBClient, tableName: String, gsiName: String
 ) async throws {
     let output = try await client.listTables(input: .init())
@@ -84,6 +84,6 @@ package func createSnapshotTable(
     }
 }
 
-package func waitTable(client: DynamoDBClient, targetTableName: String) async throws -> Bool {
+func waitTable(client: DynamoDBClient, targetTableName: String) async throws -> Bool {
     (try await client.listTables(input: .init())).tableNames?.contains(targetTableName) == true
 }

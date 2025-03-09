@@ -1,6 +1,6 @@
 import EventStoreAdapter
+import EventStoreAdapterDynamoDB
 import Foundation
-import PackageTestUtil
 import Testing
 
 @Suite struct SerializerTests {

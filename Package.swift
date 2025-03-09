@@ -7,6 +7,7 @@ let package = Package(
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "EventStoreAdapter", targets: ["EventStoreAdapter"]),
+        .library(name: "EventStoreAdapterForMemory", targets: ["EventStoreAdapterForMemory"]),
         .library(name: "EventStoreAdapterDynamoDB", targets: ["EventStoreAdapterDynamoDB"]),
     ],
     dependencies: [
@@ -17,16 +18,12 @@ let package = Package(
     targets: [
         .target(
             name: "EventStoreAdapter",
-            dependencies: [
-                .product(name: "Crypto", package: "swift-crypto")
-            ],
             swiftSettings: swiftSettings
         ),
-        .testTarget(
-            name: "EventStoreAdapterTests",
+        .target(
+            name: "EventStoreAdapterForMemory",
             dependencies: [
-                .target(name: "EventStoreAdapter"),
-                .target(name: "PackageTestUtil"),
+                .target(name: "EventStoreAdapter")
             ],
             swiftSettings: swiftSettings
         ),
@@ -35,22 +32,17 @@ let package = Package(
             dependencies: [
                 .product(name: "AWSDynamoDB", package: "aws-sdk-swift"),
                 .target(name: "EventStoreAdapter"),
+                .product(name: "Crypto", package: "swift-crypto"),
             ],
             swiftSettings: swiftSettings
         ),
+
         .testTarget(
-            name: "EventStoreAdapterDynamoDBTests",
-            dependencies: [
-                .target(name: "EventStoreAdapterDynamoDB"),
-                .target(name: "PackageTestUtil"),
-            ],
-            swiftSettings: swiftSettings
-        ),
-        .target(
-            name: "PackageTestUtil",
+            name: "EventStoreAdapterTests",
             dependencies: [
                 .target(name: "EventStoreAdapter"),
                 .target(name: "EventStoreAdapterDynamoDB"),
+                .target(name: "EventStoreAdapterForMemory"),
             ],
             swiftSettings: swiftSettings
         ),

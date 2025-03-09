@@ -1,3 +1,5 @@
+public import EventStoreAdapter
+
 /// メモリ内のイベントストア
 public actor EventStoreForMemory<
     Aggregate: EventStoreAdapter.Aggregate,
