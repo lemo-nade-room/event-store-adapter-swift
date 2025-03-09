@@ -1,5 +1,5 @@
 import EventStoreAdapter
-import PackageTestUtil
+import EventStoreAdapterDynamoDB
 import Testing
 
 @Suite struct KeyResolverTests {

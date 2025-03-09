@@ -1,4 +1,5 @@
 import Crypto
+public import EventStoreAdapter
 import Foundation
 
 /// 集約IDとシャード数、シーケンス番号からパーティションキーとソートキーを解決する

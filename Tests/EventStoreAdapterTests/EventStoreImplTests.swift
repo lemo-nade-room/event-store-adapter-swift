@@ -2,6 +2,7 @@
 @preconcurrency import ClientRuntime
 import EventStoreAdapter
 import EventStoreAdapterDynamoDB
+import EventStoreAdapterForMemory
 import Foundation
 import Logging
 import PackageTestUtil
