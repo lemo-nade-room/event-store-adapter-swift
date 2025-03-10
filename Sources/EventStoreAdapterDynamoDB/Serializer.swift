@@ -1,3 +1,4 @@
+public import EventStoreAdapter
 public import Foundation
 
 /// イベントのシリアライズ・デシリアライズを行う

@@ -1,12 +1,12 @@
 import Foundation
 
-package var small: Bool {
+var small: Bool {
     Environment.enableSmall
 }
-package var medium: Bool {
+var medium: Bool {
     Environment.enableMedium
 }
-package var large: Bool {
+var large: Bool {
     Environment.enableLarge
 }
 

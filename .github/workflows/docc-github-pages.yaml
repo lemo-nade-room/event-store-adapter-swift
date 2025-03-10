@@ -46,6 +46,14 @@ jobs:
             --transform-for-static-hosting \
             --hosting-base-path event-store-adapter-swift/EventStoreAdapterDynamoDB \
             --output-path ./docs/EventStoreAdapterDynamoDB
+      - name: Build DocC for EventStoreAdapterDynamoDB
+        run: |
+          swift package --allow-writing-to-directory ./docs/EventStoreAdapterForMemory \
+            generate-documentation --target EventStoreAdapterForMemory \
+            --disable-indexing \
+            --transform-for-static-hosting \
+            --hosting-base-path event-store-adapter-swift/EventStoreAdapterForMemory \
+            --output-path ./docs/EventStoreAdapterForMemory
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
