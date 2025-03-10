@@ -22,35 +22,38 @@ public struct KeyResolver<AID: AggregateId>: Sendable {
     }
 }
 
-/// デフォルトのパーティションキーリゾルバー
-/// - Parameters:
-///   - aid: 集約ID
-///   - shardCount: シャード数
-/// - Returns: パーティションキー
-public func defaultResolvePartitionKey<AID: AggregateId>(aid: AID, shardCount: Int) -> String {
-    let data = Data(aid.description.utf8)
-    let hash = SHA256.hash(data: data)
-    /*
-     [b_0, b_1, ..., b_{k-1}]
-     b_n|0〜255
+extension KeyResolver {
+    /// デフォルトのパーティションキーリゾルバー
+    /// - Parameters:
+    ///   - aid: 集約ID
+    ///   - shardCount: シャード数
+    /// - Returns: パーティションキー
+    public static func defaultResolvePartitionKey(aid: some AggregateId, shardCount: Int) -> String
+    {
+        let data = Data(aid.description.utf8)
+        let hash = SHA256.hash(data: data)
+        /*
+         [b_0, b_1, ..., b_{k-1}]
+         b_n|0〜255
 
-     N = b_0 * 256^{k-1} + b_1 * 256^{k-2} + ... + b_{k-2} * 256 + b_{k-1}
+         N = b_0 * 256^{k-1} + b_1 * 256^{k-2} + ... + b_{k-2} * 256 + b_{k-1}
 
-     r_0 = 0, r_{i+1} = (r_i * 256 + b_i) \mod d
+         r_0 = 0, r_{i+1} = (r_i * 256 + b_i) \mod d
 
-     N \mod d = r_k
-     */
-    let remainder = hash.reduce(0) { ri, bi in
-        (ri * 256 + UInt64(bi)) % UInt64(shardCount)
+         N \mod d = r_k
+         */
+        let remainder = hash.reduce(0) { ri, bi in
+            (ri * 256 + UInt64(bi)) % UInt64(shardCount)
+        }
+        return "\(AID.name)-\(remainder)"
     }
-    return "\(AID.name)-\(remainder)"
-}
 
-/// デフォルトのソートキーリゾルバー
-/// - Parameters:
-///   - aid: 集約ID
-///   - seqNr: シーケンス番号
-/// - Returns: ソートキー
-public func defaultResolveSortKey<AID: AggregateId>(aid: AID, seqNr: Int) -> String {
-    "\(AID.name)-\(aid.description)-\(seqNr)"
+    /// デフォルトのソートキーリゾルバー
+    /// - Parameters:
+    ///   - aid: 集約ID
+    ///   - seqNr: シーケンス番号
+    /// - Returns: ソートキー
+    public static func defaultResolveSortKey(aid: some AggregateId, seqNr: Int) -> String {
+        "\(AID.name)-\(aid.description)-\(seqNr)"
+    }
 }

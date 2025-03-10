@@ -3,19 +3,6 @@ public import EventStoreAdapter
 public import Foundation
 public import Logging
 
-/// Loggerのデフォルト値
-public let defaultLogger = Logger(label: "event-store-for-dynamo-db")
-/// Journalテーブル名のデフォルト値
-public let defaultJournalTableName = "journal"
-/// Journalテーブルの集約IDのインデックス名のデフォルト値
-public let defaultJournalAidIndexName = "aid-index"
-/// Snapshotテーブル名のデフォルト値
-public let defaultSnapshotTableName = "snapshot"
-/// Snapshotテーブルの集約IDのインデックス名のデフォルト値
-public let defaultSnapshotAidIndexName = "aid-index"
-/// デフォルトのシャード数
-public let defaultShardCount = 64
-
 /// DynamoDBを永続化に使用するイベントストア
 public struct EventStoreForDynamoDB<
     Aggregate: EventStoreAdapter.Aggregate,
@@ -48,13 +35,13 @@ public struct EventStoreForDynamoDB<
         eventSerializer: EventSerializer<Event>? = nil,
         snapshotSerializer: SnapshotSerializer<Aggregate>? = nil
     ) {
-        self.logger = logger ?? defaultLogger
+        self.logger = logger ?? Self.defaultLogger
         self.client = client
-        self.journalTableName = journalTableName ?? defaultJournalTableName
-        self.journalAidIndexName = journalAidIndexName ?? defaultJournalAidIndexName
-        self.snapshotTableName = snapshotTableName ?? defaultSnapshotTableName
-        self.snapshotAidIndexName = snapshotAidIndexName ?? defaultSnapshotAidIndexName
-        self.shardCount = shardCount ?? defaultShardCount
+        self.journalTableName = journalTableName ?? Self.defaultJournalTableName
+        self.journalAidIndexName = journalAidIndexName ?? Self.defaultJournalAidIndexName
+        self.snapshotTableName = snapshotTableName ?? Self.defaultSnapshotTableName
+        self.snapshotAidIndexName = snapshotAidIndexName ?? Self.defaultSnapshotAidIndexName
+        self.shardCount = shardCount ?? Self.defaultShardCount
         self.keepSnapshotCount = keepSnapshotCount
         self.deleteTTL = deleteTTL
         self.keyResolver = keyResolver ?? .init()
@@ -485,4 +472,19 @@ extension EventStoreForDynamoDB: EventStore {
             try await deleteExcessSnapshots(aid: aid)
         }
     }
+}
+
+extension EventStoreForDynamoDB {
+    /// Loggerのデフォルト値
+    public static var defaultLogger: Logger { Logger(label: "event-store-for-dynamo-db") }
+    /// Journalテーブル名のデフォルト値
+    public static var defaultJournalTableName: String { "journal" }
+    /// Journalテーブルの集約IDのインデックス名のデフォルト値
+    public static var defaultJournalAidIndexName: String { "aid-index" }
+    /// Snapshotテーブル名のデフォルト値
+    public static var defaultSnapshotTableName: String { "snapshot" }
+    /// Snapshotテーブルの集約IDのインデックス名のデフォルト値
+    public static var defaultSnapshotAidIndexName: String { "aid-index" }
+    /// デフォルトのシャード数
+    public static var defaultShardCount: Int { 64 }
 }
