@@ -1,27 +1,58 @@
 public import Foundation
 
-/// イベントを表すためのProtocol
+/// A protocol representing an Event in a CQRS/Event Sourcing system.
+///
+/// This protocol requires each event to specify a unique Event ID (`Id`), a reference to its Aggregate ID (`aid`),
+/// a sequential number (`seqNr`), a timestamp for when it occurred (`occurredAt`), and whether it's a creation event (`isCreated`).
+///
+/// # Japanese
+/// CQRS/Event Sourcing システムにおいてイベントを表すためのプロトコル。
+/// 各イベントは固有のイベントID（`Id`）、関連付けられた集約ID（`aid`）、連番（`seqNr`）、
+/// 発生した日時（`occurredAt`）、および集約の生成イベントであるかどうか（`isCreated`）を必ず持ちます。
 public protocol Event: Sendable, Hashable, Codable {
-    /// 集約ID型
+    /// The type representing the Aggregate ID associated with this event.
+    ///
+    /// # Japanese
+    /// このイベントが紐づく集約IDの型。
     associatedtype AID: EventStoreAdapter.AggregateId
-    /// イベントID型
+
+    /// The type representing the event’s unique identifier.
+    ///
+    /// # Japanese
+    /// イベント固有の識別子を表す型。
     associatedtype Id: LosslessStringConvertible
-    /// イベントID
+
+    /// The unique identifier for this event.
+    ///
+    /// # Japanese
+    /// このイベントのユニークな識別子。
     var id: Id { get }
 
-    /// 集約ID
+    /// The aggregate ID to which this event is associated.
+    ///
+    /// # Japanese
+    /// このイベントが紐づく集約のID。
     var aid: AID { get }
 
-    /// シーケンシャル番号（連番）
+    /// A sequential number representing how many events have occurred before this one for the associated aggregate.
     ///
-    /// 集約に対して一意なイベントに1から順に割り当てられる番号
+    /// In typical usage, the aggregate’s `seqNr` is incremented whenever a new event is generated,
+    /// and that incremented value is assigned as the event’s `seqNr`.
     ///
-    /// 集約がイベントを生成する際に集約のseqNrを1増やし、その後イベントを生成時に集約のseqNrをイベントに割り当てる
+    /// # Japanese
+    /// このイベント以前に、関連する集約上で何回イベントが発生したかを示す連番。
+    /// 通常は、集約の `seqNr` をイベント生成時にインクリメントし、それがイベントの `seqNr` として割り当てられます。
     var seqNr: Int { get }
 
-    /// 発生日時
+    /// The date and time when this event occurred.
+    ///
+    /// # Japanese
+    /// このイベントが発生した日時。
     var occurredAt: Date { get }
 
-    /// このイベントが集約の生成イベントかどうか
+    /// A Boolean value indicating whether this event is the creation event for the aggregate.
+    ///
+    /// # Japanese
+    /// このイベントが集約の生成イベントであるかどうかを示すフラグ。
     var isCreated: Bool { get }
 }

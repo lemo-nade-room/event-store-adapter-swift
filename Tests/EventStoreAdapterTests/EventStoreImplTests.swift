@@ -5,7 +5,6 @@ import EventStoreAdapterDynamoDB
 import EventStoreAdapterForMemory
 import Foundation
 import Logging
-import PackageTestUtil
 @preconcurrency import SmithyHTTPAPI
 import Testing
 
