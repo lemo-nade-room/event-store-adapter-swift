@@ -12,20 +12,18 @@ public protocol EventStore: Sendable {
     /// # Japanese
     /// このイベントストアが扱うイベントの型。
     associatedtype Event: EventStoreAdapter.Event
-    
+
     /// The aggregate type associated with the stored events.
     ///
     /// # Japanese
     /// このイベントストアで扱う集約の型。
     associatedtype Aggregate: EventStoreAdapter.Aggregate
-    
+
     /// The type of Aggregate ID.
     ///
     /// # Japanese
     /// 集約のID型。
     associatedtype AID: EventStoreAdapter.AggregateId
-
-    // MARK: - Persisting Events
 
     /// Persists an event into the store.
     ///
@@ -70,8 +68,6 @@ public protocol EventStore: Sendable {
     /// 新規に集約を作成した際に、必ずこのメソッドでイベントとスナップショットを同時に保存してください。
     func persistEventAndSnapshot(event: Event, aggregate: Aggregate) async throws
 
-    // MARK: - Retrieving Snapshots and Events
-
     /// Retrieves the latest snapshot for a given aggregate ID.
     ///
     /// - Parameter aid: The aggregate ID.
@@ -108,8 +104,6 @@ public protocol EventStore: Sendable {
     /// スナップショット以降のイベントを取得する場合は、`snapshot.seqNr + 1` を引数に指定してください。
     func getEventsByAIDSinceSequenceNumber(aid: AID, seqNr: Int) async throws -> [Event]
 }
-
-// MARK: - Error Types
 
 /// Errors that may occur when writing to the event store.
 ///
