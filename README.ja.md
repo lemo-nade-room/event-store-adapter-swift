@@ -1,6 +1,6 @@
 # event-store-adapter-swift
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)  
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Testing Status](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/ci.yaml/badge.svg)](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/ci.yaml)
 
 このライブラリは、**CQRS**および**Event Sourcing**
