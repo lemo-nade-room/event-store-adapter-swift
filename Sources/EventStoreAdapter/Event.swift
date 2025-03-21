@@ -15,7 +15,7 @@ public protocol Event: Sendable, Hashable, Codable {
     /// # Japanese
     /// このイベントが紐づく集約IDの型。
     associatedtype AID: EventStoreAdapter.AggregateId
-    
+
     /// The type representing the event’s unique identifier.
     ///
     /// # Japanese
