@@ -46,6 +46,7 @@ jobs:
       - run: curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
       - run: tar zxf swiftly-$(uname -m).tar.gz
       - run: ./swiftly init --verbose --assume-yes --skip-install
+      - run: . ~/.local/share/swiftly/env.sh
       - run: swiftly install 6.1
 
       - run: swift build
