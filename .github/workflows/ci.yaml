@@ -52,7 +52,6 @@ jobs:
           . ~/.local/share/swiftly/env.sh
           swiftly install 6.1
           echo "$(dirname $(which swift))" >> $GITHUB_PATH
-      - run: swift --version
       - run: swift build
       - run: swift test
         env:
