@@ -43,7 +43,8 @@ jobs:
           key: swift-build-package-resolved-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
           path: .build
 
-      - run: |
+      - name: Install Swift
+        run: |
           sudo apt-get update
           sudo apt-get install -y libcurl4-openssl-dev
           curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
@@ -57,9 +58,6 @@ jobs:
       - run: swift test
         env:
           TEST_LEVEL: small
-      - run: swift test
-        env:
-          TEST_LEVEL: medium
   test-medium:
     timeout-minutes: 10
     runs-on: ubuntu-latest
