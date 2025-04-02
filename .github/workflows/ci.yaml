@@ -37,7 +37,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
     steps:
-      - run: swift --version
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
         with:
@@ -52,9 +51,7 @@ jobs:
           ./swiftly init --verbose --assume-yes --skip-install
           . ~/.local/share/swiftly/env.sh
           swiftly install 6.1
-          hash -r
-          swift --version
-          which swift
+          echo "$(dirname $(which swift))" >> $GITHUB_PATH
       - run: swift --version
       - run: swift build
       - run: swift test
