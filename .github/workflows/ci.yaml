@@ -43,12 +43,12 @@ jobs:
           key: swift-build-package-resolved-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
           path: .build
 
-      - run: curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
-      - run: tar zxf swiftly-$(uname -m).tar.gz
-      - run: ./swiftly init --verbose --assume-yes --skip-install
-      - run: . ~/.local/share/swiftly/env.sh
-      - run: hash -r
-      - run: swiftly install 6.1
+      - run: |
+          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
+          tar zxf swiftly-$(uname -m).tar.gz
+          ./swiftly init --verbose --assume-yes --skip-install
+          . ~/.local/share/swiftly/env.sh
+          swiftly install 6.1
 
       - run: swift build
       - run: swift test
