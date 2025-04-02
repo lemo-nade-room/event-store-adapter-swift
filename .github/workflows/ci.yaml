@@ -47,6 +47,7 @@ jobs:
       - run: tar zxf swiftly-$(uname -m).tar.gz
       - run: ./swiftly init --verbose --assume-yes --skip-install
       - run: . ~/.local/share/swiftly/env.sh
+      - run: hash -r
       - run: swiftly install 6.1
 
       - run: swift build
