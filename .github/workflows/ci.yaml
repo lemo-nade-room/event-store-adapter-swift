@@ -45,7 +45,7 @@ jobs:
 
       - run: |
           sudo apt-get update
-          sudo apt-get install -y ca-certificates
+          sudo apt-get install -y libcurl4-openssl-dev
           curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
           tar zxf swiftly-$(uname -m).tar.gz
           ./swiftly init --verbose --assume-yes --skip-install
