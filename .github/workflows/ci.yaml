@@ -42,7 +42,6 @@ jobs:
         with:
           key: swift-build-package-resolved-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
           path: .build
-
       - name: Install Swift
         run: |
           sudo apt-get update
@@ -73,9 +72,16 @@ jobs:
         with:
           key: swift-build-package-resolved-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
           path: .build
-      - uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.0"
+      - name: Install Swift
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
+          tar zxf swiftly-$(uname -m).tar.gz
+          ./swiftly init --verbose --assume-yes --skip-install
+          . ~/.local/share/swiftly/env.sh
+          swiftly install 6.1
+          echo "$(dirname $(which swift))" >> $GITHUB_PATH
       - run: swift test
         env:
           TEST_LEVEL: medium
