@@ -53,6 +53,8 @@ jobs:
           . ~/.local/share/swiftly/env.sh
           swiftly install 6.1
           hash -r
+          swift --version
+          which swift
       - run: swift --version
       - run: swift build
       - run: swift test
