@@ -51,7 +51,7 @@ jobs:
           ./swiftly init --verbose --assume-yes --skip-install
           . ~/.local/share/swiftly/env.sh
           swiftly install 6.1
-
+      - run: swift --version
       - run: swift build
       - run: swift test
         env:
