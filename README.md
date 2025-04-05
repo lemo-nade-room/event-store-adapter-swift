@@ -1,6 +1,6 @@
 # event-store-adapter-swift
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)  
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Testing Status](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/ci.yaml/badge.svg)](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/ci.yaml)
 
 This library provides **CQRS** and **Event Sourcing** capabilities for Swift, allowing you to manage events and
