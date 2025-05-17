@@ -38,6 +38,7 @@ jobs:
       - name: Commit & push, then create / update PR
         if: steps.changes.outputs.modified == 'true'
         env:
+          BRANCH_NAME: chore/swift-package-update
           GH_TOKEN: ${{ secrets.PAT_PUSH }}
         run: |
           set -euo pipefail
