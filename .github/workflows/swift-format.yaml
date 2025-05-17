@@ -1,4 +1,4 @@
-name: ci
+name: Swift format
 on:
   push:
     branches:
