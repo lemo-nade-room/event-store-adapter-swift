@@ -41,11 +41,13 @@ jobs:
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git push origin --delete "$BRANCH_NAME" || true
 
           git switch -C "$BRANCH_NAME"
           git add Package.resolved
           git commit -m "chore: ⬆️ Update Swift packages"
-          git push --force-with-lease --set-upstream origin "$BRANCH_NAME"
+          git push --set-upstream origin "$BRANCH_NAME"
 
           # PR が存在するかチェック
           if gh pr view "$BRANCH_NAME" --json number --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
