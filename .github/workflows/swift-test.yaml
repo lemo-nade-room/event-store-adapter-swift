@@ -8,6 +8,9 @@ on:
       - ".github/workflows/swift-test.yaml"
       - "**.swift"
       - "Package.resolved"
+  workflow_run:
+    workflows: [ "Weekly Swift Package Update" ]
+    types: [ completed ]
   schedule:
     - cron: '0 0 * * *'
 
