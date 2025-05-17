@@ -31,6 +31,7 @@ jobs:
         with:
           key: swift-build-package-resolved-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
           path: .build
+      - run: swift build
       - run: swift test
         env:
           SMALL: true
