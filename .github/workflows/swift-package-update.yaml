@@ -59,13 +59,11 @@ jobs:
           if [[ -n "$PR_NUM" ]]; then
             gh pr edit "$PR_NUM" \
               --title "📦 Update Swift packages" \
-              --body  "Swift パッケージを最新化しました。Package.resolved の差分をご確認ください。" \
-              --add-reviewer lemo-nade-room
+              --body  "Swift パッケージを最新化しました。Package.resolved の差分をご確認ください。"
           else
             gh pr create \
               --base main \
               --head "$BRANCH_NAME" \
               --title "📦 Update Swift packages" \
-              --body "Swift パッケージを最新化しました。Package.resolved の差分をご確認ください。" \
-              --reviewer lemo-nade-room
+              --body "Swift パッケージを最新化しました。Package.resolved の差分をご確認ください。"
           fi
