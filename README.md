@@ -1,7 +1,7 @@
 # event-store-adapter-swift
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Testing Status](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/ci.yaml/badge.svg)](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/swift-test.yaml)
+[![Testing Status](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/swift-test.yaml/badge.svg)](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/swift-test.yaml)
 
 This library provides **CQRS** and **Event Sourcing** capabilities for Swift, allowing you to manage events and
 snapshots in a scalable and safe manner. It’s designed to work seamlessly with AWS DynamoDB or other data stores, and

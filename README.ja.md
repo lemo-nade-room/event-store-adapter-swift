@@ -1,7 +1,7 @@
 # event-store-adapter-swift
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Testing Status](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/ci.yaml/badge.svg)](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/swift-test.yaml)
+[![Testing Status](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/swift-test.yaml/badge.svg)](https://github.com/lemo-nade-room/event-store-adapter-swift/actions/workflows/swift-test.yaml)
 
 このライブラリは、**CQRS**および**Event Sourcing**
 をSwiftで実現するためのイベントストア機能を提供します。AWSのDynamoDBなどのデータストアを利用してイベントやスナップショットを安全かつスケーラブルに管理できるよう設計されています。
