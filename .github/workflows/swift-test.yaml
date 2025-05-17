@@ -7,7 +7,6 @@ on:
     paths:
       - ".github/workflows/swift-test.yaml"
       - "**.swift"
-      - "compose.yaml"
       - "Package.resolved"
   schedule:
     - cron: '0 0 * * *'
@@ -38,5 +37,3 @@ jobs:
           MEDIUM: true
           AWS_ACCESS_KEY_ID: dummy
           AWS_SECRET_ACCESS_KEY: dummy
-      - if: always()
-        run: docker compose down
