@@ -36,6 +36,7 @@ jobs:
         if: steps.changes.outputs.modified == 'true'
         env:
           BRANCH_NAME: chore/swift-package-update
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -e
 
