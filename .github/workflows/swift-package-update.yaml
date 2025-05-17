@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: ${{ github.workflow }}
@@ -20,6 +21,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_PUSH }}
 
       - run: swift package update
 
@@ -35,26 +38,31 @@ jobs:
       - name: Commit & push, then create / update PR
         if: steps.changes.outputs.modified == 'true'
         env:
-          BRANCH_NAME: chore/swift-package-update
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAT_PUSH }}
         run: |
-          set -e
+          set -euo pipefail
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git push origin --delete "$BRANCH_NAME" || true
 
-          git switch -C "$BRANCH_NAME"
+          # 既存ブランチを最新 HEAD へ fast-forward
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME" >/dev/null; then
+            git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
+            git switch "$BRANCH_NAME"
+            git pull --rebase --autostash
+          else
+            git switch -c "$BRANCH_NAME"
+          fi
+
           git add Package.resolved
-          git commit -m "chore: ⬆️ Update Swift packages"
+          git commit -m "chore: ⬆️ Update Swift packages" || true
           git push --set-upstream origin "$BRANCH_NAME"
 
-          # PR が存在するかチェック
-          if gh pr view "$BRANCH_NAME" --json number --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          # PR 作成または更新
+          if gh pr view "$BRANCH_NAME" --json number >/dev/null 2>&1; then
             gh pr edit "$BRANCH_NAME" \
               --title "📦 Update Swift packages" \
-              --body "Swift パッケージを最新化しました。Package.resolved の差分をご確認ください。" \
+              --body  "Swift パッケージを最新化しました。Package.resolved の差分をご確認ください。" \
               --add-reviewer lemo-nade-room
           else
             gh pr create \
@@ -62,5 +70,5 @@ jobs:
               --head "$BRANCH_NAME" \
               --title "📦 Update Swift packages" \
               --body "Swift パッケージを最新化しました。Package.resolved の差分をご確認ください。" \
-              --reviewer lemo-nade-room        # ★ create のときは --reviewer
+              --reviewer lemo-nade-room
           fi
