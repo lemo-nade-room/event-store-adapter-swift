@@ -46,20 +46,21 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 既存ブランチを最新 HEAD へ fast-forward
-          if git ls-remote --exit-code --heads origin "$BRANCH_NAME" >/dev/null; then
-            git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
-            git switch "$BRANCH_NAME"
-            git pull --rebase --autostash
-          else
-            git switch -c "$BRANCH_NAME"
-          fi
+          # 1️⃣ 古いリモートブランチを削除（存在しなくても OK）
+          git push origin --delete "$BRANCH_NAME" || true
 
+          # 2️⃣ 毎回クリーンな作業ブランチを再生成
+          git switch --create "$BRANCH_NAME"
+
+          # 3️⃣ 変更をコミット（差分が空ならスキップ）
           git add Package.resolved
-          git commit -m "chore: ⬆️ Update Swift packages" || true
-          git push --set-upstream origin "$BRANCH_NAME"
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: ⬆️ Update Swift packages"
 
-          # PR 作成または更新
+          # 4️⃣ 強制でも安全に push（自動生成ブランチ専用なので上書き可）
+          git push --force --set-upstream origin "$BRANCH_NAME"
+
+          # 5️⃣ PR 作成または更新＋レビュアー付与
           if gh pr view "$BRANCH_NAME" --json number >/dev/null 2>&1; then
             gh pr edit "$BRANCH_NAME" \
               --title "📦 Update Swift packages" \
