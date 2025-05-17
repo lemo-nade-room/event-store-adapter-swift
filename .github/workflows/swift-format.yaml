@@ -1,0 +1,23 @@
+name: Swift format
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - ".github/workflows/swift-format.yaml"
+      - "**.swift"
+      - ".swift-format"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    timeout-minutes: 5
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install swift-format
+      - run: swift format lint -s --configuration .swift-format -r Sources Tests Package.swift
