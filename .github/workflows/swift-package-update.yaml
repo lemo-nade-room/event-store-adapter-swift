@@ -1,0 +1,63 @@
+name: Weekly Swift Package Update
+
+on:
+  schedule:
+    - cron: '0 21 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: swift package update
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if [[ -n $(git status --porcelain Package.resolved) ]]; then
+            echo "modified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "modified=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit & push, then create/update PR
+        if: steps.changes.outputs.modified == 'true'
+        env:
+          BRANCH_NAME: chore/swift-package-update
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 同じブランチを毎回再利用
+          git switch -C "$BRANCH_NAME"
+          git add Package.resolved
+          git commit -m "chore: ⬆️ Update Swift packages"
+          git push --force-with-lease --set-upstream origin "$BRANCH_NAME"
+
+          # 既存 PR があれば更新、なければ作成
+          if gh pr view "$BRANCH_NAME" --json number >/dev/null 2>&1; then
+            gh pr edit "$BRANCH_NAME" \
+              --title "📦 Update Swift packages" \
+              --body "Swift パッケージを最新化しました。詳細は Package.resolved の差分を参照してください。"
+              --add-reviewer lemo-nade-room
+          else
+            gh pr create \
+              --base main \
+              --head "$BRANCH_NAME" \
+              --title "📦 Update Swift packages" \
+              --body "Swift パッケージを最新化しました。詳細は Package.resolved の差分を参照してください。"
+              --add-reviewer lemo-nade-room
+          fi
