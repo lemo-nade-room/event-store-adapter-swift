@@ -25,11 +25,12 @@ jobs:
         ports:
           - "8001:8000"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/cache@v4
         with:
-          key: swift-build-package-resolved-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
+          key: swift-build-package-resolved-${{ runner.os }}-${{ runner.arch }} }}
           path: .build
+
       - run: swift build
       - run: swift test
         env:
