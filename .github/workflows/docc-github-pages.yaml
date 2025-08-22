@@ -20,10 +20,10 @@ jobs:
       id-token: write
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/cache@v4
         with:
-          key: swift-build-package-resolved-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
+          key: swift-build-${{ runner.os }}-${{ runner.arch }} }}
           path: .build
 
       - uses: swift-actions/setup-swift@v2

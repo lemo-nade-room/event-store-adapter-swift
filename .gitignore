@@ -11,3 +11,4 @@ docs/*
 !docs/index.html
 !docs/style.css
 .index-build
+Package.resolved
