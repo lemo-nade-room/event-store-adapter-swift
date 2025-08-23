@@ -26,10 +26,6 @@ jobs:
           key: swift-build-${{ runner.os }}-${{ runner.arch }} }}
           path: .build
 
-      - uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.0"
-
       - name: Build DocC for EventStoreAdapter
         run: |
           swift package --allow-writing-to-directory ./docs/EventStoreAdapter \
