@@ -6,7 +6,7 @@
 /// # Japanese
 /// CQRS/Event Sourcing システムにおけるイベントストアを表すプロトコル。
 /// イベントやスナップショットの保存、最新スナップショットの取得、指定した範囲のイベント取得などを行うためのメソッドを定義します。
-public protocol EventStore<Event, Aggregate, AID>: Sendable {
+public protocol EventStore<Event, Aggregate>: Sendable {
     /// The type of event stored in this event store.
     ///
     /// # Japanese
@@ -17,13 +17,13 @@ public protocol EventStore<Event, Aggregate, AID>: Sendable {
     ///
     /// # Japanese
     /// このイベントストアで扱う集約の型。
-    associatedtype Aggregate: EventStoreAdapter.Aggregate
+    associatedtype Aggregate: EventStoreAdapter.Aggregate where Aggregate.AID == Event.AID
 
     /// The type of Aggregate ID.
     ///
     /// # Japanese
     /// 集約のID型。
-    associatedtype AID: EventStoreAdapter.AggregateId
+    typealias AID = Aggregate.AID
 
     /// Persists an event into the store.
     ///
