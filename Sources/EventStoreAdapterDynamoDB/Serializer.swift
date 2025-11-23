@@ -21,56 +21,56 @@ public import Foundation
 /// デフォルトでは、`serializeForJSON` と `deserializeFromJSON` を使用して JSON エンコード/デコードを行いますが、
 /// プロトコルバッファなど異なる形式を利用したい場合は、独自のクロージャを渡して置き換えることができます。
 public struct EventSerializer<Event: EventStoreAdapter.Event>: Sendable {
-    /// A closure that serializes an event into raw data.
-    ///
-    /// # English
-    /// Provide a function that takes an `Event` and returns `Data`.
-    /// By default, this calls ``serializeForJSON(_:jsonEncoder:)``.
-    ///
-    /// # Japanese
-    /// イベントをバイナリデータへ変換するクロージャ。
-    /// デフォルトでは ``serializeForJSON(_:jsonEncoder:)`` を用いて JSON に変換します。
-    public var serialize: @Sendable (Event) throws -> Data
+  /// A closure that serializes an event into raw data.
+  ///
+  /// # English
+  /// Provide a function that takes an `Event` and returns `Data`.
+  /// By default, this calls ``serializeForJSON(_:jsonEncoder:)``.
+  ///
+  /// # Japanese
+  /// イベントをバイナリデータへ変換するクロージャ。
+  /// デフォルトでは ``serializeForJSON(_:jsonEncoder:)`` を用いて JSON に変換します。
+  public var serialize: @Sendable (Event) throws -> Data
 
-    /// A closure that deserializes raw data back into an event.
-    ///
-    /// # English
-    /// Provide a function that takes `Data` and returns an `Event`.
-    /// By default, this calls ``deserializeFromJSON(_:jsonDecoder:)``.
-    ///
-    /// # Japanese
-    /// バイナリデータを受け取り、イベントに復元するためのクロージャ。
-    /// デフォルトでは ``deserializeFromJSON(_:jsonDecoder:)`` を使って JSON デコードを行います。
-    public var deserialize: @Sendable (Data) throws -> Event
+  /// A closure that deserializes raw data back into an event.
+  ///
+  /// # English
+  /// Provide a function that takes `Data` and returns an `Event`.
+  /// By default, this calls ``deserializeFromJSON(_:jsonDecoder:)``.
+  ///
+  /// # Japanese
+  /// バイナリデータを受け取り、イベントに復元するためのクロージャ。
+  /// デフォルトでは ``deserializeFromJSON(_:jsonDecoder:)`` を使って JSON デコードを行います。
+  public var deserialize: @Sendable (Data) throws -> Event
 
-    /// Initializes an `EventSerializer` with optional custom serialization/deserialization closures.
-    ///
-    /// # English
-    /// - Parameters:
-    /// - serialize: A function to convert `Event` to `Data`.
-    /// - deserialize: A function to convert `Data` to `Event`.
-    ///
-    /// If not provided, both use JSON-based defaults:
-    /// `serializeForJSON` and `deserializeFromJSON`.
-    ///
-    /// # Japanese
-    /// - Parameters:
-    /// - serialize: `Event` を `Data` に変換する処理を指定できます。
-    /// - deserialize: `Data` を `Event` に復元する処理を指定できます。
-    ///
-    /// 未指定の場合、どちらも JSON を使用するデフォルト処理（
-    /// `serializeForJSON` と `deserializeFromJSON`）が利用されます。
-    public init(
-        serialize: @escaping @Sendable (Event) throws -> Data = {
-            try serializeForJSON($0, jsonEncoder: .init())
-        },
-        deserialize: @escaping @Sendable (Data) throws -> Event = {
-            try deserializeFromJSON($0, jsonDecoder: .init())
-        }
-    ) {
-        self.serialize = serialize
-        self.deserialize = deserialize
+  /// Initializes an `EventSerializer` with optional custom serialization/deserialization closures.
+  ///
+  /// # English
+  /// - Parameters:
+  /// - serialize: A function to convert `Event` to `Data`.
+  /// - deserialize: A function to convert `Data` to `Event`.
+  ///
+  /// If not provided, both use JSON-based defaults:
+  /// `serializeForJSON` and `deserializeFromJSON`.
+  ///
+  /// # Japanese
+  /// - Parameters:
+  /// - serialize: `Event` を `Data` に変換する処理を指定できます。
+  /// - deserialize: `Data` を `Event` に復元する処理を指定できます。
+  ///
+  /// 未指定の場合、どちらも JSON を使用するデフォルト処理（
+  /// `serializeForJSON` と `deserializeFromJSON`）が利用されます。
+  public init(
+    serialize: @escaping @Sendable (Event) throws -> Data = {
+      try serializeForJSON($0, jsonEncoder: .init())
+    },
+    deserialize: @escaping @Sendable (Data) throws -> Event = {
+      try deserializeFromJSON($0, jsonDecoder: .init())
     }
+  ) {
+    self.serialize = serialize
+    self.deserialize = deserialize
+  }
 }
 
 /// A serializer and deserializer for aggregate snapshots.
@@ -91,50 +91,50 @@ public struct EventSerializer<Event: EventStoreAdapter.Event>: Sendable {
 ///
 /// という処理を自由にカスタマイズできます。
 public struct SnapshotSerializer<Aggregate: EventStoreAdapter.Aggregate>: Sendable {
-    /// A closure that serializes an aggregate snapshot to raw data.
-    ///
-    /// # English
-    /// By default, this calls ``serializeForJSON(_:jsonEncoder:)``.
-    ///
-    /// # Japanese
-    /// デフォルトでは ``serializeForJSON(_:jsonEncoder:)`` によって JSON 変換を行います。
-    public var serialize: @Sendable (Aggregate) throws -> Data
+  /// A closure that serializes an aggregate snapshot to raw data.
+  ///
+  /// # English
+  /// By default, this calls ``serializeForJSON(_:jsonEncoder:)``.
+  ///
+  /// # Japanese
+  /// デフォルトでは ``serializeForJSON(_:jsonEncoder:)`` によって JSON 変換を行います。
+  public var serialize: @Sendable (Aggregate) throws -> Data
 
-    /// A closure that deserializes raw data back into an aggregate snapshot.
-    ///
-    /// # English
-    /// By default, this calls ``deserializeFromJSON(_:jsonDecoder:)``.
-    ///
-    /// # Japanese
-    /// デフォルトでは ``deserializeFromJSON(_:jsonDecoder:)`` によって JSON からの復元を行います。
-    public var deserialize: @Sendable (Data) throws -> Aggregate
+  /// A closure that deserializes raw data back into an aggregate snapshot.
+  ///
+  /// # English
+  /// By default, this calls ``deserializeFromJSON(_:jsonDecoder:)``.
+  ///
+  /// # Japanese
+  /// デフォルトでは ``deserializeFromJSON(_:jsonDecoder:)`` によって JSON からの復元を行います。
+  public var deserialize: @Sendable (Data) throws -> Aggregate
 
-    /// Initializes a `SnapshotSerializer` with optional custom serialization/deserialization closures.
-    ///
-    /// # English
-    /// - Parameters:
-    /// - serialize: A function to convert `Aggregate` to `Data`.
-    /// - deserialize: A function to convert `Data` to `Aggregate`.
-    ///
-    /// Defaults to JSON-based serialization with `serializeForJSON` and `deserializeFromJSON`.
-    ///
-    /// # Japanese
-    /// - Parameters:
-    /// - serialize: `Aggregate` を `Data` に変換する処理。
-    /// - deserialize: `Data` を `Aggregate` に変換する処理。
-    ///
-    /// 未指定の場合は JSON を用いたデフォルト処理が使用されます (`serializeForJSON` と `deserializeFromJSON`)。
-    public init(
-        serialize: @escaping @Sendable (Aggregate) throws -> Data = {
-            try serializeForJSON($0, jsonEncoder: .init())
-        },
-        deserialize: @escaping @Sendable (Data) throws -> Aggregate = {
-            try deserializeFromJSON($0, jsonDecoder: .init())
-        }
-    ) {
-        self.serialize = serialize
-        self.deserialize = deserialize
+  /// Initializes a `SnapshotSerializer` with optional custom serialization/deserialization closures.
+  ///
+  /// # English
+  /// - Parameters:
+  /// - serialize: A function to convert `Aggregate` to `Data`.
+  /// - deserialize: A function to convert `Data` to `Aggregate`.
+  ///
+  /// Defaults to JSON-based serialization with `serializeForJSON` and `deserializeFromJSON`.
+  ///
+  /// # Japanese
+  /// - Parameters:
+  /// - serialize: `Aggregate` を `Data` に変換する処理。
+  /// - deserialize: `Data` を `Aggregate` に変換する処理。
+  ///
+  /// 未指定の場合は JSON を用いたデフォルト処理が使用されます (`serializeForJSON` と `deserializeFromJSON`)。
+  public init(
+    serialize: @escaping @Sendable (Aggregate) throws -> Data = {
+      try serializeForJSON($0, jsonEncoder: .init())
+    },
+    deserialize: @escaping @Sendable (Data) throws -> Aggregate = {
+      try deserializeFromJSON($0, jsonDecoder: .init())
     }
+  ) {
+    self.serialize = serialize
+    self.deserialize = deserialize
+  }
 }
 
 /// Serializes a `Codable` object to JSON data.
@@ -157,7 +157,7 @@ public struct SnapshotSerializer<Aggregate: EventStoreAdapter.Aggregate>: Sendab
 ///
 /// `EventSerializer` や `SnapshotSerializer` でデフォルトとして使用される関数です。
 public func serializeForJSON(_ content: some Codable, jsonEncoder: JSONEncoder) throws -> Data {
-    try jsonEncoder.encode(content)
+  try jsonEncoder.encode(content)
 }
 
 /// Deserializes JSON data into a `Codable` object.
@@ -180,7 +180,7 @@ public func serializeForJSON(_ content: some Codable, jsonEncoder: JSONEncoder) 
 ///
 /// `EventSerializer` や `SnapshotSerializer` でデフォルトとして利用される関数です。
 public func deserializeFromJSON<T: Codable>(_ data: Data, jsonDecoder: JSONDecoder) throws -> T {
-    try jsonDecoder.decode(T.self, from: data)
+  try jsonDecoder.decode(T.self, from: data)
 }
 
 /// An enumeration representing potential errors during JSON deserialization.
@@ -192,5 +192,5 @@ public func deserializeFromJSON<T: Codable>(_ data: Data, jsonDecoder: JSONDecod
 /// JSON デシリアライズ時に発生する可能性があるエラーを表す列挙型です。
 /// - `notBase64Encoded`: データが Base64 形式でエンコードされているはずなのに、そうではなかったことを示します。
 public enum JSONDeserializeError: Error, Sendable {
-    case notBase64Encoded
+  case notBase64Encoded
 }
