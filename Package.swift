@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 
 import PackageDescription
 
@@ -51,7 +51,8 @@ let package = Package(
 )
 var swiftSettings: [SwiftSetting] {
     [
-        .enableExperimentalFeature("StrictConcurrency"),
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+        .enableUpcomingFeature("NonescapableTypes"),
         .enableUpcomingFeature("ExistentialAny"),
         .enableUpcomingFeature("InternalImportsByDefault"),
     ]
