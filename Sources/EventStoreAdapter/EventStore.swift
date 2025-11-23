@@ -6,7 +6,7 @@
 /// # Japanese
 /// CQRS/Event Sourcing システムにおけるイベントストアを表すプロトコル。
 /// イベントやスナップショットの保存、最新スナップショットの取得、指定した範囲のイベント取得などを行うためのメソッドを定義します。
-public protocol EventStore: Sendable {
+public protocol EventStore<Event, Aggregate, AID>: Sendable {
     /// The type of event stored in this event store.
     ///
     /// # Japanese
