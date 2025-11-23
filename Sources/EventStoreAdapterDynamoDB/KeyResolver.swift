@@ -14,121 +14,122 @@ import Foundation
 /// デフォルトの実装である `defaultResolvePartitionKey` と `defaultResolveSortKey` を使用するか、独自のクロージャを指定することで、
 /// DynamoDB などのキーとして利用可能な文字列を生成します。
 public struct KeyResolver<AID: AggregateId>: Sendable {
-  /// A closure that takes an `AID` and a shard count, returning the partition key as a string.
-  ///
-  /// # English
-  /// This property defines how to produce the **partition key**. By default, it uses a hash-based approach
-  /// from `defaultResolvePartitionKey`, but you can supply your own closure if you have different needs.
-  ///
-  /// # Japanese
-  /// このクロージャは `AID`（集約ID）とシャード数を受け取り、パーティションキーを文字列として生成するためのロジックを定義します。
-  /// デフォルトでは `defaultResolvePartitionKey` を利用しますが、要件に合わせて独自にカスタマイズが可能です。
-  public var resolvePartitionKey: @Sendable (AID, Int) -> String
+    /// A closure that takes an `AID` and a shard count, returning the partition key as a string.
+    ///
+    /// # English
+    /// This property defines how to produce the **partition key**. By default, it uses a hash-based approach
+    /// from `defaultResolvePartitionKey`, but you can supply your own closure if you have different needs.
+    ///
+    /// # Japanese
+    /// このクロージャは `AID`（集約ID）とシャード数を受け取り、パーティションキーを文字列として生成するためのロジックを定義します。
+    /// デフォルトでは `defaultResolvePartitionKey` を利用しますが、要件に合わせて独自にカスタマイズが可能です。
+    public var resolvePartitionKey: @Sendable (AID, Int) -> String
 
-  /// A closure that takes an `AID` and a sequence number, returning the sort key as a string.
-  ///
-  /// # English
-  /// This property defines how to produce the **sort key**. By default, it concatenates the name of the `AggregateId`,
-  /// the string representation of the `AID`, and the sequence number, but it can be overridden.
-  ///
-  /// # Japanese
-  /// このクロージャは `AID`（集約ID）とシーケンス番号（`seqNr`）を受け取り、ソートキーを文字列として生成するためのロジックを定義します。
-  /// デフォルトでは `AID.name` と `AID.description`、および `seqNr` を連結した形式を返しますが、自由に上書きすることが可能です。
-  public var resolveSortKey: @Sendable (AID, Int) -> String
+    /// A closure that takes an `AID` and a sequence number, returning the sort key as a string.
+    ///
+    /// # English
+    /// This property defines how to produce the **sort key**. By default, it concatenates the name of the `AggregateId`,
+    /// the string representation of the `AID`, and the sequence number, but it can be overridden.
+    ///
+    /// # Japanese
+    /// このクロージャは `AID`（集約ID）とシーケンス番号（`seqNr`）を受け取り、ソートキーを文字列として生成するためのロジックを定義します。
+    /// デフォルトでは `AID.name` と `AID.description`、および `seqNr` を連結した形式を返しますが、自由に上書きすることが可能です。
+    public var resolveSortKey: @Sendable (AID, Int) -> String
 
-  /// Creates a new `KeyResolver` with specified or default partition/sort key resolvers.
-  ///
-  /// # English
-  /// - Parameters:
-  /// - resolvePartitionKey: A closure to compute the partition key from `(AID, shardCount)`.
-  /// - resolveSortKey: A closure to compute the sort key from `(AID, seqNr)`.
-  ///
-  /// If no closures are provided, it falls back to the default implementations:
-  /// `defaultResolvePartitionKey` and `defaultResolveSortKey`.
-  ///
-  /// # Japanese
-  /// 新しい `KeyResolver` を作成します。
-  /// - Parameters:
-  /// - resolvePartitionKey: `(AID, shardCount)` を受け取り、パーティションキーを生成するクロージャ。
-  /// - resolveSortKey: `(AID, seqNr)` を受け取り、ソートキーを生成するクロージャ。
-  ///
-  /// 引数として何も指定しない場合、デフォルトの `defaultResolvePartitionKey` と
-  /// `defaultResolveSortKey` が使用されます。
-  public init(
-    resolvePartitionKey: @escaping @Sendable (AID, Int) -> String = {
-      defaultResolvePartitionKey(aid: $0, shardCount: $1)
-    },
-    resolveSortKey: @escaping @Sendable (AID, Int) -> String = {
-      defaultResolveSortKey(aid: $0, seqNr: $1)
+    /// Creates a new `KeyResolver` with specified or default partition/sort key resolvers.
+    ///
+    /// # English
+    /// - Parameters:
+    /// - resolvePartitionKey: A closure to compute the partition key from `(AID, shardCount)`.
+    /// - resolveSortKey: A closure to compute the sort key from `(AID, seqNr)`.
+    ///
+    /// If no closures are provided, it falls back to the default implementations:
+    /// `defaultResolvePartitionKey` and `defaultResolveSortKey`.
+    ///
+    /// # Japanese
+    /// 新しい `KeyResolver` を作成します。
+    /// - Parameters:
+    /// - resolvePartitionKey: `(AID, shardCount)` を受け取り、パーティションキーを生成するクロージャ。
+    /// - resolveSortKey: `(AID, seqNr)` を受け取り、ソートキーを生成するクロージャ。
+    ///
+    /// 引数として何も指定しない場合、デフォルトの `defaultResolvePartitionKey` と
+    /// `defaultResolveSortKey` が使用されます。
+    public init(
+        resolvePartitionKey: @escaping @Sendable (AID, Int) -> String = {
+            defaultResolvePartitionKey(aid: $0, shardCount: $1)
+        },
+        resolveSortKey: @escaping @Sendable (AID, Int) -> String = {
+            defaultResolveSortKey(aid: $0, seqNr: $1)
+        }
+    ) {
+        self.resolvePartitionKey = resolvePartitionKey
+        self.resolveSortKey = resolveSortKey
     }
-  ) {
-    self.resolvePartitionKey = resolvePartitionKey
-    self.resolveSortKey = resolveSortKey
-  }
 }
 
 extension KeyResolver {
-  /// The default method for resolving a partition key from an aggregate ID and a shard count.
-  ///
-  /// # English
-  /// - Parameters:
-  /// - aid: The aggregate ID.
-  /// - shardCount: The number of shards.
-  /// - Returns: A partition key string of the form `"<AID.name>-<remainder>"`.
-  ///
-  /// This function computes a SHA-256 hash over the string representation of the `aid`.
-  /// It then treats the resulting bytes as a large number and takes the remainder modulo `shardCount`.
-  /// The final key is constructed by concatenating the `AID.name` with that remainder.
-  ///
-  /// # Japanese
-  /// 集約ID と シャード数 を使用して、パーティションキーを生成するデフォルト実装です。
-  ///
-  /// - Parameters:
-  /// - aid: 集約ID
-  /// - shardCount: シャード数
-  /// - Returns: `"<AID.name>-<remainder>"` 形式のパーティションキーを返します。
-  ///
-  /// この関数は、`aid.description` から得られる文字列を SHA-256 でハッシュ化し、生成されたハッシュを数値として
-  /// `shardCount` でモジュロ演算（剰余）を行います。結果として得られる剰余 `remainder` を `<AID.name>` と連結して
-  /// 文字列キーとします。
-  public static func defaultResolvePartitionKey(aid: some AggregateId, shardCount: Int) -> String {
-    let data = Data(aid.description.utf8)
-    let hash = SHA256.hash(data: data)
-    /*
-     Explanation of the remainder computation:
-     [b_0, b_1, ..., b_{k-1}] are bytes of the hash.
-     We accumulate them in a 64-bit integer, multiplying the previous result by 256 and adding the new byte,
-     then take modulo shardCount. This final remainder is appended to AID.name.
-    */
-    let remainder = hash.reduce(0) { ri, bi in
-      (ri * 256 + UInt64(bi)) % UInt64(shardCount)
+    /// The default method for resolving a partition key from an aggregate ID and a shard count.
+    ///
+    /// # English
+    /// - Parameters:
+    /// - aid: The aggregate ID.
+    /// - shardCount: The number of shards.
+    /// - Returns: A partition key string of the form `"<AID.name>-<remainder>"`.
+    ///
+    /// This function computes a SHA-256 hash over the string representation of the `aid`.
+    /// It then treats the resulting bytes as a large number and takes the remainder modulo `shardCount`.
+    /// The final key is constructed by concatenating the `AID.name` with that remainder.
+    ///
+    /// # Japanese
+    /// 集約ID と シャード数 を使用して、パーティションキーを生成するデフォルト実装です。
+    ///
+    /// - Parameters:
+    /// - aid: 集約ID
+    /// - shardCount: シャード数
+    /// - Returns: `"<AID.name>-<remainder>"` 形式のパーティションキーを返します。
+    ///
+    /// この関数は、`aid.description` から得られる文字列を SHA-256 でハッシュ化し、生成されたハッシュを数値として
+    /// `shardCount` でモジュロ演算（剰余）を行います。結果として得られる剰余 `remainder` を `<AID.name>` と連結して
+    /// 文字列キーとします。
+    public static func defaultResolvePartitionKey(aid: some AggregateId, shardCount: Int) -> String
+    {
+        let data = Data(aid.description.utf8)
+        let hash = SHA256.hash(data: data)
+        /*
+         Explanation of the remainder computation:
+         [b_0, b_1, ..., b_{k-1}] are bytes of the hash.
+         We accumulate them in a 64-bit integer, multiplying the previous result by 256 and adding the new byte,
+         then take modulo shardCount. This final remainder is appended to AID.name.
+        */
+        let remainder = hash.reduce(0) { ri, bi in
+            (ri * 256 + UInt64(bi)) % UInt64(shardCount)
+        }
+        return "\(AID.name)-\(remainder)"
     }
-    return "\(AID.name)-\(remainder)"
-  }
 
-  /// The default method for resolving a sort key from an aggregate ID and a sequence number.
-  ///
-  /// # English
-  /// - Parameters:
-  /// - aid: The aggregate ID.
-  /// - seqNr: The sequence number.
-  /// - Returns: A sort key string, typically `"<AID.name>-<aid.description>-<seqNr>"`.
-  ///
-  /// This function simply concatenates the name of the aggregate ID type, the string description
-  /// of the ID itself, and the sequence number. It ensures uniqueness per sequential event in
-  /// a single aggregate partition.
-  ///
-  /// # Japanese
-  /// 集約ID と シーケンス番号 を使用して、ソートキーを生成するデフォルト実装です。
-  ///
-  /// - Parameters:
-  /// - aid: 集約ID
-  /// - seqNr: シーケンス番号
-  /// - Returns: `"<AID.name>-<aid.description>-<seqNr>"` という形式のソートキー文字列を返します。
-  ///
-  /// この関数は、まず `AID.name`、次に `aid.description`、そして `seqNr` を連結し、
-  /// 1 つのユニークな文字列キーを作成します。単一の集約内で連番付きのイベントを正しくソートできるようになります。
-  public static func defaultResolveSortKey(aid: some AggregateId, seqNr: Int) -> String {
-    "\(AID.name)-\(aid.description)-\(seqNr)"
-  }
+    /// The default method for resolving a sort key from an aggregate ID and a sequence number.
+    ///
+    /// # English
+    /// - Parameters:
+    /// - aid: The aggregate ID.
+    /// - seqNr: The sequence number.
+    /// - Returns: A sort key string, typically `"<AID.name>-<aid.description>-<seqNr>"`.
+    ///
+    /// This function simply concatenates the name of the aggregate ID type, the string description
+    /// of the ID itself, and the sequence number. It ensures uniqueness per sequential event in
+    /// a single aggregate partition.
+    ///
+    /// # Japanese
+    /// 集約ID と シーケンス番号 を使用して、ソートキーを生成するデフォルト実装です。
+    ///
+    /// - Parameters:
+    /// - aid: 集約ID
+    /// - seqNr: シーケンス番号
+    /// - Returns: `"<AID.name>-<aid.description>-<seqNr>"` という形式のソートキー文字列を返します。
+    ///
+    /// この関数は、まず `AID.name`、次に `aid.description`、そして `seqNr` を連結し、
+    /// 1 つのユニークな文字列キーを作成します。単一の集約内で連番付きのイベントを正しくソートできるようになります。
+    public static func defaultResolveSortKey(aid: some AggregateId, seqNr: Int) -> String {
+        "\(AID.name)-\(aid.description)-\(seqNr)"
+    }
 }
