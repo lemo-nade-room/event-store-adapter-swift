@@ -161,14 +161,14 @@ where
             return handler
         }
         let logger = Logger(label: "EventStoreForDynamoDBTests.test")
-        let client = try await DynamoDBClient(
-            config: .init(
-                ignoreConfiguredEndpointURLs: true,
-                region: "ap-northeast-1",
-                endpoint: "http://localhost:8001",
-                httpClientEngine: ClientConfigurationDefaults.makeClient(
-                    httpClientConfiguration: .init(protocolType: .http))
-            ))
+        let config = try await DynamoDBClient.DynamoDBClientConfig(
+            ignoreConfiguredEndpointURLs: true,
+            region: "ap-northeast-1",
+            endpoint: "http://localhost:8001",
+            httpClientEngine: ClientConfigurationDefaults.makeClient(
+                httpClientConfiguration: .init(protocolType: .http))
+        )
+        let client = DynamoDBClient(config: config)
 
         let testTimeFactor =
             ProcessInfo.processInfo.environment["TEST_TIME_FACTOR"].flatMap(TimeInterval.init) ?? 1
@@ -176,7 +176,7 @@ where
         let journalTableName = "journal"
         let journalAidIndexName = "journal-aid-index"
         while try await waitTable(client: client, targetTableName: journalTableName) {
-            _ = try? await client.deleteTable(input: .init(tableName: journalTableName))
+            _ = try? await client.deleteTable(input: DeleteTableInput(tableName: journalTableName))
             try await Task.sleep(nanoseconds: UInt64(testTimeFactor) * 1_000_000_00)
         }
         try await createJournalTable(
@@ -186,7 +186,7 @@ where
         let snapshotTableName = "snapshot"
         let snapshotAidIndexName = "snapshot-aid-index"
         while try await waitTable(client: client, targetTableName: snapshotTableName) {
-            _ = try? await client.deleteTable(input: .init(tableName: snapshotTableName))
+            _ = try? await client.deleteTable(input: DeleteTableInput(tableName: snapshotTableName))
             try await Task.sleep(nanoseconds: UInt64(testTimeFactor) * 1_000_000_00)
         }
         try await createSnapshotTable(
