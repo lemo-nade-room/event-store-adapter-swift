@@ -1,4 +1,5 @@
 name: Swift format
+
 on:
   push:
     branches:
@@ -6,8 +7,12 @@ on:
   pull_request:
     paths:
       - ".github/workflows/swift-format.yaml"
-      - "**.swift"
+      - "**/*.swift"
       - ".swift-format"
+      - ".swift-version"
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,9 +20,16 @@ concurrency:
 
 jobs:
   lint:
-    timeout-minutes: 5
-    runs-on: macos-latest
+    timeout-minutes: 15
+    runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v6
-      - run: brew install swift-format
-      - run: swift format lint -s --configuration .swift-format -r Sources Tests Package.swift
+      - uses: actions/checkout@v7
+
+      - id: swift-version
+        run: echo "version=$(cat .swift-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: vapor/swiftly-action@v0.2.1
+        with:
+          toolchain: ${{ steps.swift-version.outputs.version }}
+
+      - run: swift format lint --strict --configuration .swift-format -r Sources Tests Package.swift
