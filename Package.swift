@@ -16,7 +16,7 @@ let package = Package(
     .package(url: "https://github.com/soto-project/soto.git", from: "7.0.0"),
     .package(url: "https://github.com/soto-project/soto-core.git", from: "7.0.0"),
     .package(url: "https://github.com/apple/swift-system.git", from: "1.6.0"),
-    .package(url: "https://github.com/swiftlang/swift-docc-plugin.git", from: "1.0.0"),
+    .package(url: "https://github.com/swiftlang/swift-docc-plugin.git", from: "1.4.0"),
   ],
   targets: [
     .target(

@@ -5,65 +5,88 @@ on:
     branches:
       - main
     paths:
-      - "Sources/**.swift"
+      - "Sources/**"
+      - "Package.swift"
+      - ".swift-version"
       - ".github/workflows/docc-github-pages.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-24.04-arm
     permissions:
-      pages: write
-      id-token: write
-    timeout-minutes: 10
+      contents: read
+      pages: read
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/cache@v5
+      - uses: actions/checkout@v7
+
+      - id: swift-version
+        run: echo "version=$(cat .swift-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: vapor/swiftly-action@v0.2.1
         with:
-          key: swift-build-${{ runner.os }}-${{ runner.arch }}
+          toolchain: ${{ steps.swift-version.outputs.version }}
+
+      - uses: actions/configure-pages@v6
+        id: pages
+
+      - uses: actions/cache@v6
+        with:
           path: .build
+          key: swift-docc-${{ runner.os }}-${{ runner.arch }}
 
-      - name: Install Swift
+      - name: Build combined DocC documentation
+        shell: bash
+        env:
+          DOCS_BASE_PATH: ${{ steps.pages.outputs.base_path }}
         run: |
-          sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
-          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
-          tar zxf swiftly-$(uname -m).tar.gz
-          ./swiftly init --verbose --assume-yes --skip-install
-          . ~/.local/share/swiftly/env.sh
-          swiftly install 6.4
-          echo "$(dirname $(which swift))" >> $GITHUB_PATH
+          swift package --allow-writing-to-directory docs \
+            generate-documentation \
+            --target EventStoreAdapter \
+            --target EventStoreAdapterDynamoDB \
+            --enable-experimental-combined-documentation \
+            --disable-indexing \
+            --warnings-as-errors \
+            --transform-for-static-hosting \
+            --hosting-base-path "${DOCS_BASE_PATH#/}" \
+            --output-path docs
 
-      - name: Build DocC for EventStoreAdapter
-        run: |
-          swift package --allow-writing-to-directory ./docs/EventStoreAdapter \
-            generate-documentation --target EventStoreAdapter \
-            --disable-indexing \
-            --transform-for-static-hosting \
-            --hosting-base-path event-store-adapter-swift/EventStoreAdapter \
-            --output-path ./docs/EventStoreAdapter
-      - name: Build DocC for EventStoreAdapterDynamoDB
-        run: |
-          swift package --allow-writing-to-directory ./docs/EventStoreAdapterDynamoDB \
-            generate-documentation --target EventStoreAdapterDynamoDB \
-            --disable-indexing \
-            --transform-for-static-hosting \
-            --hosting-base-path event-store-adapter-swift/EventStoreAdapterDynamoDB \
-            --output-path ./docs/EventStoreAdapterDynamoDB
-      - name: Build DocC for EventStoreAdapterDynamoDB
-        run: |
-          swift package --allow-writing-to-directory ./docs/EventStoreAdapterForMemory \
-            generate-documentation --target EventStoreAdapterForMemory \
-            --disable-indexing \
-            --transform-for-static-hosting \
-            --hosting-base-path event-store-adapter-swift/EventStoreAdapterForMemory \
-            --output-path ./docs/EventStoreAdapterForMemory
+          cat > docs/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0; url=./documentation/">
+            <title>EventStoreAdapter Documentation</title>
+          </head>
+          <body>
+            <a href="./documentation/">Open the documentation</a>
+          </body>
+          </html>
+          HTML
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: docs
 
-      - uses: actions/deploy-pages@v4
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v5
+        id: deployment
