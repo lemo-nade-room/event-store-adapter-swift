@@ -10,8 +10,6 @@ also comes with an in-memory version for simpler or testing scenarios.
 For other language implementations (Rust, Scala, etc.), please
 see [this repository](https://github.com/j5ik2o/event-store-adapter).
 
-[日本語ドキュメント](./README.ja.md)
-
 ## Features
 
 - **Easy CQRS/Event Sourcing Implementation**: Offers straightforward read and write of aggregates and events.
