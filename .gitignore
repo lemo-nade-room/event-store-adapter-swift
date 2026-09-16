@@ -8,7 +8,8 @@ DerivedData/
 .netrc
 docker
 docs/*
-!docs/index.html
-!docs/style.css
 .index-build
 Package.resolved
+.tmp
+.idea
+.swiftpm

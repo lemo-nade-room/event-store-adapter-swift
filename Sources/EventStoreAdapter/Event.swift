@@ -1,58 +1,38 @@
 public import Foundation
 
-/// A protocol representing an Event in a CQRS/Event Sourcing system.
+/// A value that records a change to an aggregate.
 ///
-/// This protocol requires each event to specify a unique Event ID (`Id`), a reference to its Aggregate ID (`aid`),
-/// a sequential number (`seqNr`), a timestamp for when it occurred (`occurredAt`), and whether it's a creation event (`isCreated`).
+/// An event carries the event payload together with the aggregate identity, its
+/// position in that aggregate's history, and the time at which the change
+/// occurred. The inherited `Identifiable.id` property identifies the event
+/// itself; `aid` identifies the aggregate whose history contains the event.
+/// The event's `ID` type must be `Sendable` and
+/// `LosslessStringConvertible`.
 ///
-/// # Japanese
-/// CQRS/Event Sourcing システムにおいてイベントを表すためのプロトコル。
-/// 各イベントは固有のイベントID（`Id`）、関連付けられた集約ID（`aid`）、連番（`seqNr`）、
-/// 発生した日時（`occurredAt`）、および集約の生成イベントであるかどうか（`isCreated`）を必ず持ちます。
-public protocol Event: Sendable, Hashable, Codable {
-    /// The type representing the Aggregate ID associated with this event.
-    ///
-    /// # Japanese
-    /// このイベントが紐づく集約IDの型。
-    associatedtype AID: EventStoreAdapter.AggregateId
+/// Event payloads are required to be `Sendable` and `Hashable`, but they are not
+/// required to conform to `Codable`. Serialization is selected by the event store
+/// implementation, which allows binary and other custom formats.
+public protocol Event<Payload, AID, ID>: Swift.Sendable, Swift.Hashable, Swift.Identifiable
+where ID: Swift.Sendable & Swift.LosslessStringConvertible {
+  /// The type of the domain value carried by the event.
+  associatedtype Payload: Swift.Sendable, Swift.Hashable
 
-    /// The type representing the event’s unique identifier.
-    ///
-    /// # Japanese
-    /// イベント固有の識別子を表す型。
-    associatedtype Id: LosslessStringConvertible
+  /// The type of aggregate ID associated with the event.
+  associatedtype AID: EventStoreAdapter.AggregateId
 
-    /// The unique identifier for this event.
-    ///
-    /// # Japanese
-    /// このイベントのユニークな識別子。
-    var id: Id { get }
+  /// The domain value carried by the event.
+  var payload: Payload { get }
 
-    /// The aggregate ID to which this event is associated.
-    ///
-    /// # Japanese
-    /// このイベントが紐づく集約のID。
-    var aid: AID { get }
+  /// The ID of the aggregate whose history contains this event.
+  var aid: AID { get }
 
-    /// A sequential number representing how many events have occurred before this one for the associated aggregate.
-    ///
-    /// In typical usage, the aggregate’s `seqNr` is incremented whenever a new event is generated,
-    /// and that incremented value is assigned as the event’s `seqNr`.
-    ///
-    /// # Japanese
-    /// このイベント以前に、関連する集約上で何回イベントが発生したかを示す連番。
-    /// 通常は、集約の `seqNr` をイベント生成時にインクリメントし、それがイベントの `seqNr` として割り当てられます。
-    var seqNr: Int { get }
+  /// The event's position in the aggregate history.
+  ///
+  /// Event-sourced aggregates conventionally start at `1` and increase this value
+  /// by one for each successive event. Concrete stores define whether and how
+  /// they validate that convention.
+  var seqNr: Swift.Int { get }
 
-    /// The date and time when this event occurred.
-    ///
-    /// # Japanese
-    /// このイベントが発生した日時。
-    var occurredAt: Date { get }
-
-    /// A Boolean value indicating whether this event is the creation event for the aggregate.
-    ///
-    /// # Japanese
-    /// このイベントが集約の生成イベントであるかどうかを示すフラグ。
-    var isCreated: Bool { get }
+  /// The date and time at which the event occurred.
+  var occurredAt: Foundation.Date { get }
 }

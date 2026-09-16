@@ -1,4 +1,5 @@
 name: Swift Testing
+
 on:
   push:
     branches:
@@ -6,10 +7,13 @@ on:
   pull_request:
     paths:
       - ".github/workflows/swift-test.yaml"
-      - "**.swift"
-      - "Package.resolved"
+      - "**/*.swift"
+      - ".swift-version"
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "17 0 * * *"
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,24 +21,65 @@ concurrency:
 
 jobs:
   test:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    runs-on: ubuntu-24.04-arm
+    env:
+      AWS_ACCESS_KEY_ID: dummy
+      AWS_SECRET_ACCESS_KEY: dummy
+      AWS_REGION: ap-northeast-1
+      AWS_DEFAULT_REGION: ap-northeast-1
+      AWS_ENDPOINT_URL_DYNAMODB: http://127.0.0.1:8001
     services:
       dynamodb:
-        image: "amazon/dynamodb-local:latest"
+        image: amazon/dynamodb-local:latest
         ports:
           - "8001:8000"
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/cache@v5
-        with:
-          key: swift-build-${{ runner.os }}-${{ runner.arch }}
-          path: .build
+      - uses: actions/checkout@v7
 
-      - run: swift build
-      - run: swift test
+      - id: swift-version
+        run: echo "version=$(cat .swift-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: vapor/swiftly-action@v0.2.1
+        with:
+          toolchain: ${{ steps.swift-version.outputs.version }}
+
+      - uses: actions/cache@v6
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Prepare DynamoDB tables
+        shell: bash
+        run: |
+          for table_name in journal snapshot; do
+            aws dynamodb create-table \
+              --endpoint-url "$AWS_ENDPOINT_URL_DYNAMODB" \
+              --table-name "$table_name" \
+              --attribute-definitions \
+                AttributeName=pkey,AttributeType=S \
+                AttributeName=skey,AttributeType=S \
+                AttributeName=aid,AttributeType=S \
+                AttributeName=seq_nr,AttributeType=N \
+              --key-schema AttributeName=pkey,KeyType=HASH AttributeName=skey,KeyType=RANGE \
+              --global-secondary-indexes '[{
+                "IndexName": "aid-index",
+                "KeySchema": [
+                  {"AttributeName": "aid", "KeyType": "HASH"},
+                  {"AttributeName": "seq_nr", "KeyType": "RANGE"}
+                ],
+                "Projection": {"ProjectionType": "ALL"}
+              }]' \
+              --billing-mode PAY_PER_REQUEST \
+              --no-cli-pager
+
+            aws dynamodb wait table-exists \
+              --endpoint-url "$AWS_ENDPOINT_URL_DYNAMODB" \
+              --table-name "$table_name"
+          done
+
+      - run: swift build -Xswiftc -warnings-as-errors
+
+      - run: swift test -Xswiftc -warnings-as-errors
         env:
-          SMALL: true
-          MEDIUM: true
-          AWS_ACCESS_KEY_ID: dummy
-          AWS_SECRET_ACCESS_KEY: dummy
+          MEDIUM_TESTS: "true"
