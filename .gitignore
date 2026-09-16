@@ -12,3 +12,6 @@ docs/*
 !docs/style.css
 .index-build
 Package.resolved
+.tmp
+.idea
+.swiftpm
