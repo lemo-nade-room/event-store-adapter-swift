@@ -6,6 +6,13 @@ public import Foundation
 /// of the latest event represented by its payload. The event store may use
 /// `version` to detect concurrent updates and `lastUpdatedAt` to retain the
 /// snapshot's update time.
+///
+/// - Important: Implement snapshots as structs with value semantics. Class-based
+///   conformances are unsupported, even though Swift permits them: protocols
+///   cannot restrict conformance to structs. Modifying a copy must not change the
+///   original snapshot. Using a struct alone is not sufficient if its copies
+///   share mutable reference state; the snapshot must preserve value semantics,
+///   including for its payload and version.
 public protocol Snapshot<Payload, AID>: Swift.Sendable, Swift.Hashable {
   /// The type of the aggregate state held by the snapshot.
   associatedtype Payload: Swift.Sendable, Swift.Hashable
