@@ -156,9 +156,6 @@ public struct EventStoreForDynamoDB<
   ///     `version` is the expected stored snapshot version for an update and
   ///     is replaced by the incremented version in the persisted copy. For a
   ///     creation event, the supplied version is ignored and `1` is persisted.
-  ///     `Snapshot` does not require value semantics, so if it is a reference
-  ///     type, assigning the local copy's version may also mutate the caller's
-  ///     instance.
   ///
   /// - Throws: `EventStoreWriteError.otherError` when aggregate IDs or sequence
   ///   numbers differ, or when the event date cannot be represented as an
