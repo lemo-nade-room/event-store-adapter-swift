@@ -1,49 +1,49 @@
 public import EventStoreAdapter
 public import Foundation
 
-/// Encodes and decodes events stored by a DynamoDB event store.
+/// Encodes and decodes event envelopes stored by a DynamoDB event store.
 ///
 /// The encoded value is stored as the DynamoDB binary `payload` attribute. The
 /// serializer therefore defines part of the persistent storage format: keep
 /// the encoder and decoder compatible with records that are already stored.
 /// The closures are `Sendable` and asynchronous because a custom format may
 /// perform work outside the calling task.
-public struct EventSerializer<Event: EventStoreAdapter.Event>: Sendable {
-  /// Converts an event into the bytes written to DynamoDB.
+public struct EventEnvelopeSerializer<EventEnvelope: EventStoreAdapter.EventEnvelopeProtocol>: Sendable {
+  /// Converts an event envelope into the bytes written to DynamoDB.
   ///
   /// If byte-for-byte reproducibility is required, the closure must produce a
-  /// deterministic representation for the event. DynamoDB's transaction
+  /// deterministic representation for the envelope. DynamoDB's transaction
   /// conditions still determine whether a retry is accepted, and the closure
   /// must be safe to invoke concurrently.
-  public var serialize: @Sendable (Event) async throws -> Foundation.Data
+  public var serialize: @Sendable (EventEnvelope) async throws -> Foundation.Data
 
-  /// Reconstructs an event from the bytes read from DynamoDB.
+  /// Reconstructs an event envelope from the bytes read from DynamoDB.
   ///
-  /// This closure should be the inverse of ``EventSerializer/serialize`` for
+  /// This closure should be the inverse of ``EventEnvelopeSerializer/serialize`` for
   /// every persisted format that the application still supports. A decoding
   /// failure is surfaced by the event store as a read deserialization error.
   /// The closure must be safe to invoke concurrently.
-  public var deserialize: @Sendable (Foundation.Data) async throws -> Event
+  public var deserialize: @Sendable (Foundation.Data) async throws -> EventEnvelope
 
-  /// Creates an event serializer from paired encoding and decoding closures.
+  /// Creates an event envelope serializer from paired encoding and decoding closures.
   ///
   /// - Parameters:
-  ///   - serialize: Converts an event to its persisted bytes.
-  ///   - deserialize: Reconstructs an event from persisted bytes.
+  ///   - serialize: Converts an event envelope to its persisted bytes.
+  ///   - deserialize: Reconstructs an event envelope from persisted bytes.
   ///
   /// The two closures are captured without modification. They are expected to
   /// agree on the format and to remain compatible with existing records.
   public init(
-    serialize: @escaping @Sendable (Event) async throws -> Foundation.Data,
-    deserialize: @escaping @Sendable (Foundation.Data) async throws -> Event,
+    serialize: @escaping @Sendable (EventEnvelope) async throws -> Foundation.Data,
+    deserialize: @escaping @Sendable (Foundation.Data) async throws -> EventEnvelope,
   ) {
     self.serialize = serialize
     self.deserialize = deserialize
   }
 }
 
-extension EventSerializer where Event: Codable {
-  /// Creates an event serializer that uses the supplied Foundation JSON coder pair.
+extension EventEnvelopeSerializer where EventEnvelope: Codable {
+  /// Creates an event envelope serializer that uses the supplied Foundation JSON coder pair.
   ///
   /// The encoder is updated to include sorted keys before it is captured. This
   /// stabilizes JSON object-key order when the encoded value is otherwise
@@ -53,15 +53,15 @@ extension EventSerializer where Event: Codable {
   /// Encoding and decoding errors are propagated to the caller.
   ///
   /// - Parameters:
-  ///   - encoder: The encoder used for event values. Its `outputFormatting` is
+  ///   - encoder: The encoder used for event envelopes. Its `outputFormatting` is
   ///     augmented with `.sortedKeys`.
-  ///   - decoder: The decoder used for event values.
+  ///   - decoder: The decoder used for event envelopes.
   /// - Returns: A serializer configured with the supplied JSON encoder and decoder.
   public static func json(encoder: JSONEncoder = JSONEncoder(), decoder: JSONDecoder = JSONDecoder()) -> Self {
     encoder.outputFormatting.insert(.sortedKeys)
     return .init(
       serialize: encoder.encode,
-      deserialize: { try decoder.decode(Event.self, from: $0) },
+      deserialize: { try decoder.decode(EventEnvelope.self, from: $0) },
     )
   }
 }

@@ -3,7 +3,7 @@ import Foundation
 
 struct SnapshotEnvelope<
   Snapshot: Sendable & Hashable & Codable & Identifiable
->: EventStoreAdapter.Snapshot, Codable where Snapshot.ID: AggregateId & Codable {
+>: EventStoreAdapter.SnapshotEnvelopeProtocol, Codable where Snapshot.ID: AggregateId & Codable {
   var aggregate: String
   var payload: Data
   var aid: Snapshot.ID

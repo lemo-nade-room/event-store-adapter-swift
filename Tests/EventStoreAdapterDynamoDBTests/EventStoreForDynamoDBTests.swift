@@ -198,7 +198,7 @@ import Testing
   func `An event serialization failure prevents any persistence`() async throws {
     // Arrange
     struct SerializeError: Error, Sendable, Hashable {}
-    var eventSerializer: UserAccountEventSerializer = .json()
+    var eventSerializer: UserAccountEventEnvelopeSerializer = .json()
     eventSerializer.serialize = { _ in throw SerializeError() }
 
     try await withEventStoreForDynamoDB(eventSerializer: eventSerializer) { sut in
@@ -246,7 +246,7 @@ import Testing
   func `A snapshot serialization failure prevents any persistence`() async throws {
     // Arrange
     struct SerializeError: Error, Sendable, Hashable {}
-    var snapshotSerializer: UserAccountSnapshotSerializer = .json()
+    var snapshotSerializer: UserAccountSnapshotEnvelopeSerializer = .json()
     snapshotSerializer.serialize = { _ in throw SerializeError() }
 
     try await withEventStoreForDynamoDB(snapshotSerializer: snapshotSerializer) { sut in
@@ -484,12 +484,14 @@ fileprivate typealias UserAccountEventStore = EventStoreForDynamoDB<
   EventEnvelope<UserAccount.Event, UserAccount.ID>,
   SnapshotEnvelope<UserAccount.Snapshot>,
 >
-fileprivate typealias UserAccountEventSerializer = EventSerializer<EventEnvelope<UserAccount.Event, UserAccount.ID>>
-fileprivate typealias UserAccountSnapshotSerializer = SnapshotSerializer<SnapshotEnvelope<UserAccount.Snapshot>>
+fileprivate typealias UserAccountEventEnvelopeSerializer =
+  EventEnvelopeSerializer<EventEnvelope<UserAccount.Event, UserAccount.ID>>
+fileprivate typealias UserAccountSnapshotEnvelopeSerializer =
+  SnapshotEnvelopeSerializer<SnapshotEnvelope<UserAccount.Snapshot>>
 
 fileprivate func withEventStoreForDynamoDB(
-  eventSerializer: UserAccountEventSerializer? = nil,
-  snapshotSerializer: UserAccountSnapshotSerializer? = nil,
+  eventSerializer: UserAccountEventEnvelopeSerializer? = nil,
+  snapshotSerializer: UserAccountSnapshotEnvelopeSerializer? = nil,
   action: @Sendable (UserAccountEventStore) async throws -> Void,
 ) async throws {
   let config = await ConfigReader(providers: [

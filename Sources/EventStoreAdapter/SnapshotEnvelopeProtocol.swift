@@ -1,6 +1,6 @@
 public import Foundation
 
-/// A materialized view of an aggregate's state at a point in its event history.
+/// An envelope carrying an aggregate's state and its persistence metadata.
 ///
 /// A snapshot is associated with an aggregate ID and records the sequence number
 /// of the latest event represented by its payload. The event store may use
@@ -13,7 +13,7 @@ public import Foundation
 ///   original snapshot. Using a struct alone is not sufficient if its copies
 ///   share mutable reference state; the snapshot must preserve value semantics,
 ///   including for its payload and version.
-public protocol Snapshot<Payload, AID>: Swift.Sendable, Swift.Hashable {
+public protocol SnapshotEnvelopeProtocol<Payload, AID>: Swift.Sendable, Swift.Hashable {
   /// The type of the aggregate state held by the snapshot.
   associatedtype Payload: Swift.Sendable, Swift.Hashable
 
