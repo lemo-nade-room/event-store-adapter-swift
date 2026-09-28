@@ -507,12 +507,11 @@ fileprivate func withEventStoreForDynamoDB(
     credentialProvider: .static(accessKeyId: awsAccessKeyID, secretAccessKey: awsSecretAccessKey)
   )
   let dynamoDB = DynamoDB(client: awsClient, region: awsRegion, endpoint: awsEndpointURLDynamoDB)
-  let eventStoreConfiguration = EventStoreForDynamoDBConfiguration(config: config)
   let logger = Logger(label: "EventStoreForDynamoDBTests")
   let eventStore = UserAccountEventStore(
     logger: logger,
     dynamoDB: dynamoDB,
-    config: eventStoreConfiguration,
+    config: config,
     eventSerializer: eventSerializer ?? .json(),
     snapshotSerializer: snapshotSerializer ?? .json(),
   )
