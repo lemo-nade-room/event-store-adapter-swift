@@ -65,7 +65,7 @@ conditional expressions, and keeps one current snapshot per aggregate.
 
 ## Requirements
 
-- Swift 6.3 or later.
+- Swift 6.4 or later.
 - macOS 15 or later, or Linux.
 - Two DynamoDB tables with the [schema below](#dynamodb-schema). DynamoDB Local can be used for development.
 
@@ -74,7 +74,7 @@ conditional expressions, and keeps one current snapshot per aggregate.
 The following package manifest uses a local checkout for the renamed envelope protocols. Adjust the path as needed.
 
 ```swift
-// swift-tools-version: 6.3
+// swift-tools-version: 6.4
 import PackageDescription
 
 let package = Package(
