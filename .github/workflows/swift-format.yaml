@@ -23,12 +23,12 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-26.04-arm
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - id: swift-version
         run: echo "version=$(cat .swift-version)" >> "$GITHUB_OUTPUT"
 
-      - uses: vapor/swiftly-action@v0.2.1
+      - uses: vapor/swiftly-action@bedb227456c5f495afbef80baebee17a8a02cef4 # v0.2.1
         with:
           toolchain: ${{ steps.swift-version.outputs.version }}
 
