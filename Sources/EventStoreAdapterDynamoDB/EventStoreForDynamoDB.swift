@@ -31,9 +31,9 @@ public import SotoDynamoDB
 /// callers that can accumulate more than one DynamoDB page must account for
 /// that limitation before using this release.
 public struct EventStoreForDynamoDB<
-  Event: EventStoreAdapter.Event,
-  Snapshot: EventStoreAdapter.Snapshot,
->: EventStoreAdapter.EventStore where Snapshot.AID == Event.AID {
+  EventEnvelope: EventStoreAdapter.EventEnvelopeProtocol,
+  SnapshotEnvelope: EventStoreAdapter.SnapshotEnvelopeProtocol,
+>: EventStoreAdapter.EventStore where SnapshotEnvelope.AID == EventEnvelope.AID {
   /// The logger used for DynamoDB requests.
   public var logger: Logger
 
@@ -55,14 +55,14 @@ public struct EventStoreForDynamoDB<
   /// It must remain compatible with the resolver used for existing records.
   public var keyResolver: KeyResolver<AID>
 
-  /// The serializer used for journal event payloads.
-  public var eventSerializer: EventSerializer<Event>
+  /// The serializer used for journal event envelopes.
+  public var eventSerializer: EventEnvelopeSerializer<EventEnvelope>
 
-  /// The serializer used for snapshot payloads.
-  public var snapshotSerializer: SnapshotSerializer<Snapshot>
+  /// The serializer used for snapshot envelopes.
+  public var snapshotSerializer: SnapshotEnvelopeSerializer<SnapshotEnvelope>
 
-  /// The aggregate ID type shared by `Event` and `Snapshot`.
-  public typealias AID = Snapshot.AID
+  /// The aggregate ID type shared by `EventEnvelope` and `SnapshotEnvelope`.
+  public typealias AID = SnapshotEnvelope.AID
 
   /// Creates a DynamoDB event store with explicit serializers.
   ///
@@ -73,8 +73,8 @@ public struct EventStoreForDynamoDB<
   ///     ``EventStoreForDynamoDBConfiguration/default``.
   ///   - keyResolver: The primary-key resolver. Defaults to ``KeyResolver``'s
   ///     SHA-256 based resolver.
-  ///   - eventSerializer: The event payload serializer.
-  ///   - snapshotSerializer: The snapshot payload serializer.
+  ///   - eventSerializer: The event envelope serializer.
+  ///   - snapshotSerializer: The snapshot envelope serializer.
   ///
   /// The referenced tables and GSIs must already exist and match the schema
   /// described by `config`. This initializer does not perform a schema check.
@@ -85,8 +85,8 @@ public struct EventStoreForDynamoDB<
     dynamoDB: DynamoDB,
     config: EventStoreForDynamoDBConfiguration = .default,
     keyResolver: KeyResolver<AID> = .init(),
-    eventSerializer: EventSerializer<Event>,
-    snapshotSerializer: SnapshotSerializer<Snapshot>,
+    eventSerializer: EventEnvelopeSerializer<EventEnvelope>,
+    snapshotSerializer: SnapshotEnvelopeSerializer<SnapshotEnvelope>,
   ) {
     self.logger = logger
     self.dynamoDB = dynamoDB
@@ -110,7 +110,7 @@ public struct EventStoreForDynamoDB<
   /// - Warning: This operation is unavailable and traps when called.
   /// - Throws: This method does not throw a recoverable error; it terminates by
   ///   trapping before it can throw.
-  public func persistEvent(event: Event, version: Int) async throws {
+  public func persistEvent(event: EventEnvelope, version: Int) async throws {
     fatalError("unimplemented persistEvent")
   }
 
@@ -161,7 +161,7 @@ public struct EventStoreForDynamoDB<
   ///   numbers differ, or when the event date cannot be represented as an
   ///   `Int64` Unix epoch timestamp in milliseconds. It also wraps serializer
   ///   and DynamoDB transaction failures as described above.
-  public func persistEventAndSnapshot(event: Event, snapshot: Snapshot) async throws {
+  public func persistEventAndSnapshot(event: EventEnvelope, snapshot: SnapshotEnvelope) async throws {
     guard event.aid == snapshot.aid else {
       throw EventStoreWriteError.otherError("event and snapshot aggregate IDs do not match")
     }
@@ -284,7 +284,7 @@ public struct EventStoreForDynamoDB<
   ///   has a missing or invalid numeric version; or
   ///   `EventStoreReadError.deserializationError` when the snapshot serializer
   ///   cannot decode the payload.
-  public func getLatestSnapshotByAID(aid: AID) async throws -> Snapshot? {
+  public func getLatestSnapshotByAID(aid: AID) async throws -> SnapshotEnvelope? {
     let output: DynamoDB.QueryOutput
     do {
       output = try await dynamoDB.query(
@@ -321,7 +321,7 @@ public struct EventStoreForDynamoDB<
       throw EventStoreReadError.otherError("snapshot version is invalid")
     }
 
-    var snapshot: Snapshot
+    var snapshot: SnapshotEnvelope
     do {
       snapshot = try await snapshotSerializer.deserialize(payloadData)
     } catch {
@@ -359,7 +359,7 @@ public struct EventStoreForDynamoDB<
   ///   or invalid Base64 payload; or
   ///   `EventStoreReadError.deserializationError` when an event serializer
   ///   cannot decode a payload.
-  public func getEventsByAIDSinceSequenceNumber(aid: AID, seqNr: Int) async throws -> [Event] {
+  public func getEventsByAIDSinceSequenceNumber(aid: AID, seqNr: Int) async throws -> [EventEnvelope] {
     let output: DynamoDB.QueryOutput
     do {
       output = try await dynamoDB.query(
@@ -382,7 +382,7 @@ public struct EventStoreForDynamoDB<
       throw EventStoreReadError.IOError(error)
     }
 
-    var events: [Event] = []
+    var events: [EventEnvelope] = []
     for item in output.items ?? [] {
       guard let payload = item["payload"] else {
         throw EventStoreReadError.otherError("event payload is missing")
@@ -416,12 +416,12 @@ func isOptimisticLockError(_ error: DynamoDBErrorType) -> Bool {
   }
 }
 
-extension EventStoreForDynamoDB where Event: Codable, Snapshot: Codable {
+extension EventStoreForDynamoDB where EventEnvelope: Codable, SnapshotEnvelope: Codable {
   /// Creates a DynamoDB event store using sorted-key JSON for events and snapshots.
   ///
   /// This convenience initializer is available when both generic types conform
   /// to `Codable`. It uses the default
-  /// ``EventSerializer/json(encoder:decoder:)`` and ``SnapshotSerializer/json()``
+  /// ``EventEnvelopeSerializer/json(encoder:decoder:)`` and ``SnapshotEnvelopeSerializer/json()``
   /// implementations, including Foundation's default coding strategies. Use
   /// the designated initializer when either persisted format requires custom
   /// encoding.
@@ -448,11 +448,11 @@ extension EventStoreForDynamoDB where Event: Codable, Snapshot: Codable {
   }
 }
 
-extension EventStoreForDynamoDB where Snapshot: Codable {
+extension EventStoreForDynamoDB where SnapshotEnvelope: Codable {
   /// Creates a DynamoDB event store using sorted-key JSON for snapshots.
   ///
   /// This initializer leaves event serialization to the supplied
-  /// `eventSerializer` and uses ``SnapshotSerializer/json()`` for snapshots.
+  /// `eventSerializer` and uses ``SnapshotEnvelopeSerializer/json()`` for snapshots.
   /// The JSON serializer uses Foundation's default coding strategies and
   /// requests sorted JSON object keys.
   ///
@@ -461,13 +461,13 @@ extension EventStoreForDynamoDB where Snapshot: Codable {
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - config: The table, index, and shard configuration.
   ///   - keyResolver: The primary-key resolver.
-  ///   - eventSerializer: The serializer for event payloads.
+  ///   - eventSerializer: The serializer for event envelopes.
   public init(
     logger: Logger,
     dynamoDB: DynamoDB,
     config: EventStoreForDynamoDBConfiguration = .default,
     keyResolver: KeyResolver<AID> = .init(),
-    eventSerializer: EventSerializer<Event>,
+    eventSerializer: EventEnvelopeSerializer<EventEnvelope>,
   ) {
     self.init(
       logger: logger,
@@ -480,10 +480,10 @@ extension EventStoreForDynamoDB where Snapshot: Codable {
   }
 }
 
-extension EventStoreForDynamoDB where Event: Codable {
+extension EventStoreForDynamoDB where EventEnvelope: Codable {
   /// Creates a DynamoDB event store using sorted-key JSON for events.
   ///
-  /// This initializer uses ``EventSerializer/json(encoder:decoder:)`` for
+  /// This initializer uses ``EventEnvelopeSerializer/json(encoder:decoder:)`` for
   /// events and leaves snapshot serialization to the supplied
   /// `snapshotSerializer`. The JSON serializer uses Foundation's default
   /// coding strategies and requests sorted JSON object keys.
@@ -493,13 +493,13 @@ extension EventStoreForDynamoDB where Event: Codable {
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - config: The table, index, and shard configuration.
   ///   - keyResolver: The primary-key resolver.
-  ///   - snapshotSerializer: The serializer for snapshot payloads.
+  ///   - snapshotSerializer: The serializer for snapshot envelopes.
   public init(
     logger: Logger,
     dynamoDB: DynamoDB,
     config: EventStoreForDynamoDBConfiguration = .default,
     keyResolver: KeyResolver<AID> = .init(),
-    snapshotSerializer: SnapshotSerializer<Snapshot>,
+    snapshotSerializer: SnapshotEnvelopeSerializer<SnapshotEnvelope>,
   ) {
     self.init(
       logger: logger,

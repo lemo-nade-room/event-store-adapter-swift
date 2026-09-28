@@ -1,6 +1,6 @@
 public import Foundation
 
-/// A value that records a change to an aggregate.
+/// An envelope carrying a domain event and its persistence metadata.
 ///
 /// An event carries the event payload together with the aggregate identity, its
 /// position in that aggregate's history, and the time at which the change
@@ -12,7 +12,7 @@ public import Foundation
 /// Event payloads are required to be `Sendable` and `Hashable`, but they are not
 /// required to conform to `Codable`. Serialization is selected by the event store
 /// implementation, which allows binary and other custom formats.
-public protocol Event<Payload, AID, ID>: Swift.Sendable, Swift.Hashable, Swift.Identifiable
+public protocol EventEnvelopeProtocol<Payload, AID, ID>: Swift.Sendable, Swift.Hashable, Swift.Identifiable
 where ID: Swift.Sendable & Swift.LosslessStringConvertible {
   /// The type of the domain value carried by the event.
   associatedtype Payload: Swift.Sendable, Swift.Hashable

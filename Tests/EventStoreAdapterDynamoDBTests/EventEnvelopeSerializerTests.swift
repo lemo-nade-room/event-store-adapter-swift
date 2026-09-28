@@ -2,7 +2,7 @@ import EventStoreAdapterDynamoDB
 import Foundation
 import Testing
 
-@Suite struct EventSerializerTests {
+@Suite struct EventEnvelopeSerializerTests {
   @Suite struct JSON {
     @Test func `Serializing with a custom encoder preserves its formatting`() async throws {
       let encoder = JSONEncoder()
@@ -23,7 +23,7 @@ import Testing
         event: created,
         metadata: ["source": "event-store-test"],
       )
-      let sut = EventSerializer<EventEnvelope<UserAccount.Event, UserAccount.ID>>.json(encoder: encoder)
+      let sut = EventEnvelopeSerializer<EventEnvelope<UserAccount.Event, UserAccount.ID>>.json(encoder: encoder)
 
       let data = try await sut.serialize(event)
 
@@ -47,7 +47,7 @@ import Testing
     }
 
     @Test func `JSON data can be deserialized into an event`() async throws {
-      let serializer = EventSerializer<EventEnvelope<UserAccount.Event, UserAccount.ID>>.json()
+      let serializer = EventEnvelopeSerializer<EventEnvelope<UserAccount.Event, UserAccount.ID>>.json()
       let aid = UserAccount.ID(
         value: try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
       )
@@ -99,7 +99,7 @@ import Testing
         event: created,
         metadata: ["z": "last", "a": "first"],
       )
-      let sut = EventSerializer<EventEnvelope<UserAccount.Event, UserAccount.ID>>.json()
+      let sut = EventEnvelopeSerializer<EventEnvelope<UserAccount.Event, UserAccount.ID>>.json()
 
       let data = try await sut.serialize(event)
 

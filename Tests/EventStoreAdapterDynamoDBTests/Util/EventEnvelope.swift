@@ -4,7 +4,7 @@ import Foundation
 struct EventEnvelope<
   Event: Sendable & Hashable & Codable,
   AID: AggregateId & Codable,
->: EventStoreAdapter.Event, Codable {
+>: EventStoreAdapter.EventEnvelopeProtocol, Codable {
   var id: UUID
   var aggregate: String
   var payload: Data

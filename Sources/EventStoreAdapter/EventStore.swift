@@ -10,16 +10,16 @@
 /// and sequence number. For a new aggregate, use its creation event and its
 /// initial snapshot at sequence number `1` by convention. A conforming store
 /// defines how it validates these relationships.
-public protocol EventStore<Event, Snapshot>: Swift.Sendable {
-  /// The event type stored by this event store.
-  associatedtype Event: EventStoreAdapter.Event
+public protocol EventStore<EventEnvelope, SnapshotEnvelope>: Swift.Sendable {
+  /// The event envelope type stored by this event store.
+  associatedtype EventEnvelope: EventStoreAdapter.EventEnvelopeProtocol
 
-  /// The snapshot type stored by this event store.
-  associatedtype Snapshot: EventStoreAdapter.Snapshot
-  where Snapshot.AID == Event.AID
+  /// The snapshot envelope type stored by this event store.
+  associatedtype SnapshotEnvelope: EventStoreAdapter.SnapshotEnvelopeProtocol
+  where SnapshotEnvelope.AID == EventEnvelope.AID
 
   /// The aggregate ID type shared by the event and snapshot types.
-  typealias AID = Snapshot.AID
+  typealias AID = SnapshotEnvelope.AID
 
   /// Persists an event for an existing aggregate.
   ///
@@ -31,7 +31,7 @@ public protocol EventStore<Event, Snapshot>: Swift.Sendable {
   ///   - event: The event to persist.
   ///   - version: The caller's current snapshot version.
   /// - Throws: ``EventStoreWriteError`` when the event cannot be persisted.
-  func persistEvent(event: Event, version: Swift.Int) async throws
+  func persistEvent(event: EventEnvelope, version: Swift.Int) async throws
 
   /// Persists an event together with the snapshot produced after applying it.
   ///
@@ -43,7 +43,7 @@ public protocol EventStore<Event, Snapshot>: Swift.Sendable {
   ///   - event: The event to persist.
   ///   - snapshot: The aggregate state after applying `event`.
   /// - Throws: ``EventStoreWriteError`` when either value cannot be persisted.
-  func persistEventAndSnapshot(event: Event, snapshot: Snapshot) async throws
+  func persistEventAndSnapshot(event: EventEnvelope, snapshot: SnapshotEnvelope) async throws
 
   /// Returns the latest snapshot for an aggregate.
   ///
@@ -51,7 +51,7 @@ public protocol EventStore<Event, Snapshot>: Swift.Sendable {
   /// - Returns: The latest snapshot available to the read, or `nil` when no
   ///   snapshot is available for `aid`.
   /// - Throws: ``EventStoreReadError`` when the snapshot cannot be read or decoded.
-  func getLatestSnapshotByAID(aid: AID) async throws -> Snapshot?
+  func getLatestSnapshotByAID(aid: AID) async throws -> SnapshotEnvelope?
 
   /// Returns an aggregate's events starting at a sequence number.
   ///
@@ -65,5 +65,5 @@ public protocol EventStore<Event, Snapshot>: Swift.Sendable {
   /// - Returns: Events for `aid` whose sequence numbers are greater than or equal
   ///   to `seqNr`.
   /// - Throws: ``EventStoreReadError`` when the events cannot be read or decoded.
-  func getEventsByAIDSinceSequenceNumber(aid: AID, seqNr: Swift.Int) async throws -> [Event]
+  func getEventsByAIDSinceSequenceNumber(aid: AID, seqNr: Swift.Int) async throws -> [EventEnvelope]
 }

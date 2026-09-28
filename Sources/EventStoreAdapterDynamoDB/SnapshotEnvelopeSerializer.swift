@@ -1,49 +1,49 @@
 public import EventStoreAdapter
 public import Foundation
 
-/// Encodes and decodes snapshots stored by a DynamoDB event store.
+/// Encodes and decodes snapshot envelopes stored by a DynamoDB event store.
 ///
 /// The encoded value is stored as the DynamoDB binary `payload` attribute. The
 /// serializer therefore defines part of the persistent storage format: keep
 /// the encoder and decoder compatible with records that are already stored.
 /// The closures are `Sendable` and asynchronous because a custom format may
 /// perform work outside the calling task.
-public struct SnapshotSerializer<Snapshot: EventStoreAdapter.Snapshot>: Sendable {
-  /// Converts a snapshot into the bytes written to DynamoDB.
+public struct SnapshotEnvelopeSerializer<SnapshotEnvelope: EventStoreAdapter.SnapshotEnvelopeProtocol>: Sendable {
+  /// Converts a snapshot envelope into the bytes written to DynamoDB.
   ///
   /// If byte-for-byte reproducibility is required, the closure must produce a
-  /// deterministic representation for the snapshot. DynamoDB's transaction
+  /// deterministic representation for the envelope. DynamoDB's transaction
   /// conditions still determine whether a retry is accepted, and the closure
   /// must be safe to invoke concurrently.
-  public var serialize: @Sendable (Snapshot) async throws -> Data
+  public var serialize: @Sendable (SnapshotEnvelope) async throws -> Data
 
-  /// Reconstructs a snapshot from the bytes read from DynamoDB.
+  /// Reconstructs a snapshot envelope from the bytes read from DynamoDB.
   ///
-  /// This closure should be the inverse of ``SnapshotSerializer/serialize``
+  /// This closure should be the inverse of ``SnapshotEnvelopeSerializer/serialize``
   /// for every persisted format that the application still supports. A
   /// decoding failure is surfaced by the event store as a read deserialization
   /// error. The closure must be safe to invoke concurrently.
-  public var deserialize: @Sendable (Data) async throws -> Snapshot
+  public var deserialize: @Sendable (Data) async throws -> SnapshotEnvelope
 
-  /// Creates a snapshot serializer from paired encoding and decoding closures.
+  /// Creates a snapshot envelope serializer from paired encoding and decoding closures.
   ///
   /// - Parameters:
-  ///   - serialize: Converts a snapshot to its persisted bytes.
-  ///   - deserialize: Reconstructs a snapshot from persisted bytes.
+  ///   - serialize: Converts a snapshot envelope to its persisted bytes.
+  ///   - deserialize: Reconstructs a snapshot envelope from persisted bytes.
   ///
   /// The two closures are captured without modification. They are expected to
   /// agree on the format and to remain compatible with existing records.
   public init(
-    serialize: @escaping @Sendable (Snapshot) async throws -> Data,
-    deserialize: @escaping @Sendable (Data) async throws -> Snapshot,
+    serialize: @escaping @Sendable (SnapshotEnvelope) async throws -> Data,
+    deserialize: @escaping @Sendable (Data) async throws -> SnapshotEnvelope,
   ) {
     self.serialize = serialize
     self.deserialize = deserialize
   }
 }
 
-extension SnapshotSerializer where Snapshot: Codable {
-  /// Creates a snapshot serializer that uses Foundation JSON encoding.
+extension SnapshotEnvelopeSerializer where SnapshotEnvelope: Codable {
+  /// Creates a snapshot envelope serializer that uses Foundation JSON encoding.
   ///
   /// The encoder requests sorted keys for JSON objects. This stabilizes object
   /// key order when the encoded value is otherwise deterministic; it does not
@@ -51,7 +51,7 @@ extension SnapshotSerializer where Snapshot: Codable {
   /// use the default `JSONEncoder` and `JSONDecoder` strategies. Encoding and
   /// decoding errors are propagated to the caller.
   ///
-  /// Use a custom ``SnapshotSerializer/init(serialize:deserialize:)`` when the
+  /// Use a custom ``SnapshotEnvelopeSerializer/init(serialize:deserialize:)`` when the
   /// stored format requires a different coding strategy or a format such as
   /// Protocol Buffers.
   ///
@@ -64,7 +64,7 @@ extension SnapshotSerializer where Snapshot: Codable {
         try encoder.encode(snapshot)
       },
       deserialize: { data in
-        try JSONDecoder().decode(Snapshot.self, from: data)
+        try JSONDecoder().decode(SnapshotEnvelope.self, from: data)
       },
     )
   }

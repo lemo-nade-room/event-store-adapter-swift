@@ -2,7 +2,7 @@ import EventStoreAdapterDynamoDB
 import Foundation
 import Testing
 
-@Suite struct SnapshotSerializerTests {
+@Suite struct SnapshotEnvelopeSerializerTests {
   @Test func `A snapshot can be serialized to JSON and restored`() async throws {
     let aid = UserAccount.ID(
       value: try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
@@ -13,7 +13,7 @@ import Testing
       version: 1,
       lastUpdatedAt: Date(timeIntervalSince1970: 1),
     )
-    let serializer = SnapshotSerializer<SnapshotEnvelope<UserAccount.Snapshot>>.json()
+    let serializer = SnapshotEnvelopeSerializer<SnapshotEnvelope<UserAccount.Snapshot>>.json()
 
     let data = try await serializer.serialize(snapshot)
     let deserialized = try await serializer.deserialize(data)
@@ -22,7 +22,7 @@ import Testing
   }
 
   @Test func `JSON data can be deserialized into a snapshot`() async throws {
-    let serializer = SnapshotSerializer<SnapshotEnvelope<UserAccount.Snapshot>>.json()
+    let serializer = SnapshotEnvelopeSerializer<SnapshotEnvelope<UserAccount.Snapshot>>.json()
     let aid = UserAccount.ID(
       value: try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
     )
@@ -63,7 +63,7 @@ import Testing
       version: 1,
       lastUpdatedAt: Date(timeIntervalSince1970: 1),
     )
-    let serializer = SnapshotSerializer<SnapshotEnvelope<UserAccount.Snapshot>>.json()
+    let serializer = SnapshotEnvelopeSerializer<SnapshotEnvelope<UserAccount.Snapshot>>.json()
 
     let data = try await serializer.serialize(snapshot)
 

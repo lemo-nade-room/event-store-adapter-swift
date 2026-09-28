@@ -6,7 +6,7 @@ Store domain events and snapshots in DynamoDB from Swift. EventStoreAdapter prov
 [Soto](https://github.com/soto-project/soto) implementation for event-sourced applications. Your application owns the
 domain model, applies events, and decides when to persist changes.
 
-This README describes the **v2 API**, targeting `2.0.0-alpha.1`. Version 2 replaces `aws-sdk-swift` with Soto and
+This README describes the **v2 API in the current checkout**. Version 2 replaces `aws-sdk-swift` with Soto and
 introduces separate event and snapshot types. It is a breaking change from v1; see [Migrating from v1](#migrating-from-v1).
 
 ## What's new in v2
@@ -25,17 +25,17 @@ Define domain events and aggregate state as ordinary Swift types, without import
 to its storage protocols. The Domain and UseCase layers can depend on application-owned repository protocols, while
 an infrastructure implementation wraps those values in persistence envelopes and writes them through this library.
 
-Keep `Event`, `Snapshot`, and `AggregateId` conformances at that outer boundary, mapping domain IDs as needed. This
-lets pure domain events remain independent of storage keys, persistence versions, and SDK clients, and keeps the
-adapter dependency out of the Domain and UseCase layers.
+Keep `EventEnvelopeProtocol`, `SnapshotEnvelopeProtocol`, and `AggregateId` conformances at that outer boundary,
+mapping domain IDs as needed. This lets pure domain events remain independent of storage keys, persistence versions,
+and SDK clients, and keeps the adapter dependency out of the Domain and UseCase layers.
 
 ### Custom event and aggregate snapshot envelopes
 
-Define your own envelopes conforming to `Event` and `Snapshot`, with a domain event or aggregate state as the
-`payload`, or encode that payload into bytes. Add application metadata such as an idempotency key or an observability
-trace ID when assembling the envelope outside the Domain and UseCase layers. This context can be supplied by outer
-layers and persisted alongside the event or aggregate snapshot without adding infrastructure concerns to the domain
-model.
+Define your own envelopes conforming to `EventEnvelopeProtocol` and `SnapshotEnvelopeProtocol`, with a domain event
+or aggregate state as the `payload`, or encode that payload into bytes. Add application metadata such as an
+idempotency key or an observability trace ID when assembling the envelope outside the Domain and UseCase layers.
+This context can be supplied by outer layers and persisted alongside the event or aggregate snapshot without adding
+infrastructure concerns to the domain model.
 
 The built-in JSON serializers encode the entire envelope, including additional fields represented by its `Codable`
 conformance. [Custom serializers](#serialization) let you control the stored format. Idempotency checks and trace
@@ -45,7 +45,7 @@ context propagation remain application responsibilities.
 
 | Product | Purpose |
 | --- | --- |
-| `EventStoreAdapter` | `AggregateId`, `Event`, `Snapshot`, `EventStore`, and read/write error types. |
+| `EventStoreAdapter` | `AggregateId`, `EventEnvelopeProtocol`, `SnapshotEnvelopeProtocol`, `EventStore`, and read/write error types. |
 | `EventStoreAdapterDynamoDB` | The Soto adapter, configuration, key resolution, and event/snapshot serializers. |
 
 The DynamoDB adapter writes an event and its snapshot in one transaction, detects conflicting writes through
@@ -71,8 +71,7 @@ conditional expressions, and keeps one current snapshot per aggregate.
 
 ## Installation
 
-The following package manifest targets the `2.0.0-alpha.1` tag once it is published. To use an unreleased checkout,
-replace the first dependency with `.package(path: "../event-store-adapter-swift")`, adjusting the path as needed.
+The following package manifest uses a local checkout for the renamed envelope protocols. Adjust the path as needed.
 
 ```swift
 // swift-tools-version: 6.3
@@ -82,10 +81,7 @@ let package = Package(
   name: "Example",
   platforms: [.macOS(.v15)],
   dependencies: [
-    .package(
-      url: "https://github.com/lemo-nade-room/event-store-adapter-swift.git",
-      exact: "2.0.0-alpha.1",
-    ),
+    .package(path: "../event-store-adapter-swift"),
     .package(url: "https://github.com/soto-project/soto.git", from: "7.0.0"),
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
   ],
@@ -150,7 +146,7 @@ struct AccountID: AggregateId, Codable {
   var description: String { "\(Self.name):\(value.uuidString)" }
 }
 
-struct AccountEvent: Event, Codable {
+struct AccountEvent: EventEnvelopeProtocol, Codable {
   enum Payload: Sendable, Hashable, Codable {
     case created(name: String)
     case renamed(name: String)
@@ -163,7 +159,7 @@ struct AccountEvent: Event, Codable {
   let occurredAt: Date
 }
 
-struct AccountSnapshot: Snapshot, Codable {
+struct AccountSnapshot: SnapshotEnvelopeProtocol, Codable {
   struct Payload: Sendable, Hashable, Codable {
     let name: String
   }
@@ -350,16 +346,16 @@ been written can make existing records inaccessible or cause writes to use diffe
 ## Serialization
 
 When both stored types conform to `Codable`, the convenience initializer uses JSON for the **entire event and
-snapshot values**, not just their `payload` properties. The JSON bytes are stored in DynamoDB binary attributes.
+snapshot envelopes**, not just their `payload` properties. The JSON bytes are stored in DynamoDB binary attributes.
 The defaults use sorted JSON object keys and Foundation's default date and data strategies; this is not a
 cross-language canonical serialization format.
 
-`EventSerializer.json(encoder:decoder:)` accepts custom JSON coders and adds `.sortedKeys` to the supplied encoder.
-`SnapshotSerializer.json()` uses its own default coders.
+`EventEnvelopeSerializer.json(encoder:decoder:)` accepts custom JSON coders and adds `.sortedKeys` to the supplied encoder.
+`SnapshotEnvelopeSerializer.json()` uses its own default coders.
 
 For another format or different snapshot coding strategies, pass
-[`EventSerializer`](Sources/EventStoreAdapterDynamoDB/EventSerializer.swift) and
-[`SnapshotSerializer`](Sources/EventStoreAdapterDynamoDB/SnapshotSerializer.swift) instances to the designated
+[`EventEnvelopeSerializer`](Sources/EventStoreAdapterDynamoDB/EventEnvelopeSerializer.swift) and
+[`SnapshotEnvelopeSerializer`](Sources/EventStoreAdapterDynamoDB/SnapshotEnvelopeSerializer.swift) instances to the designated
 initializer. Their `serialize` and `deserialize` closures are asynchronous, throwing, and `@Sendable`. They must be
 safe for concurrent use and able to decode every stored format your application still supports.
 
@@ -368,16 +364,24 @@ safe for concurrent use and able to decode every stored format your application 
 | v1 | v2 |
 | --- | --- |
 | `AWSDynamoDB.DynamoDBClient` and `client:` | `SotoDynamoDB.DynamoDB` and `dynamoDB:`; the caller manages its `AWSClient`. |
-| `Aggregate` and `EventStore.Aggregate` | A separate `Snapshot` type and `EventStore.Snapshot`. |
-| `EventStoreForDynamoDB<Aggregate, Event>` | `EventStoreForDynamoDB<Event, Snapshot>`. |
+| `Event` | `EventEnvelopeProtocol`. |
+| `Aggregate` and `EventStore.Aggregate` | A separate snapshot type conforming to `SnapshotEnvelopeProtocol`, and `EventStore.SnapshotEnvelope`. |
+| `EventStoreForDynamoDB<Aggregate, Event>` | `EventStoreForDynamoDB<EventEnvelope, SnapshotEnvelope>`. |
 | `persistEventAndSnapshot(event:aggregate:)` | `persistEventAndSnapshot(event:snapshot:)`. |
 | `Event.isCreated` | Creation is selected by `event.seqNr == 1`. |
-| `Event.Id` | `Event.ID` from `Identifiable`, constrained to `Sendable` and `LosslessStringConvertible`. |
-| No required `payload` property | `Event.payload` and `Snapshot.payload`, each with a `Sendable` and `Hashable` payload type. |
+| `Event.Id` | `EventEnvelopeProtocol.ID` from `Identifiable`, constrained to `Sendable` and `LosslessStringConvertible`. |
+| No required `payload` property | `EventEnvelopeProtocol.payload` and `SnapshotEnvelopeProtocol.payload`, each with a `Sendable` and `Hashable` payload type. |
 | `Codable` required by the storage protocols | Add `Codable` for JSON serialization, or supply custom serializers. |
 | Table/index/shard arguments on the store initializer | `EventStoreForDynamoDBConfiguration`. |
 | Snapshot retention and TTL options | One current snapshot; no retention or expiration policy. |
 | `EventStoreAdapterForMemory` | Removed. |
+
+Earlier v2 previews named these protocols `Event` and `Snapshot`. Update those conformances and constraints to
+`EventEnvelopeProtocol` and `SnapshotEnvelopeProtocol`, respectively.
+The associated types on `EventStore` are now `EventEnvelope` and `SnapshotEnvelope`; update type aliases and generic
+constraints that referred to `EventStore.Event` or `EventStore.Snapshot` accordingly.
+The serializers are now named `EventEnvelopeSerializer` and `SnapshotEnvelopeSerializer`, replacing `EventSerializer`
+and `SnapshotSerializer`.
 
 This release does not migrate existing data. Check your serialized values, ID strings, key scheme, GSIs, and snapshot
 layout before pointing v2 at a v1 table. Source compatibility and stored-data compatibility are separate concerns.
