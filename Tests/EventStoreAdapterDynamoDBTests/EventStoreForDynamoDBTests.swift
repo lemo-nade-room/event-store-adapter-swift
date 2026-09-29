@@ -27,7 +27,7 @@ import Testing
       )
       let snapshot = try await SnapshotEnvelope(
         snapshot: account.snapshot,
-        seqNr: 1,
+        appliedSeqNr: 1,
         version: 1,
         lastUpdatedAt: now,
       )
@@ -64,7 +64,7 @@ import Testing
           ),
           snapshot: try await SnapshotEnvelope(
             snapshot: account.snapshot,
-            seqNr: 1,
+            appliedSeqNr: 1,
             version: 1,
             lastUpdatedAt: createdAt,
           ),
@@ -79,14 +79,14 @@ import Testing
       let event = try EventEnvelope(
         id: UUID(),
         aid: aid,
-        seqNr: accountSnapshot.seqNr + 1,
+        seqNr: accountSnapshot.appliedSeqNr + 1,
         occurredAt: updatedAt,
         event: deactivated,
         metadata: ["source": "event-store-test"],
       )
       let snapshot = try await SnapshotEnvelope(
         snapshot: account.snapshot,
-        seqNr: accountSnapshot.seqNr + 1,
+        appliedSeqNr: accountSnapshot.appliedSeqNr + 1,
         version: accountSnapshot.version,
         lastUpdatedAt: updatedAt,
       )
@@ -126,7 +126,7 @@ import Testing
       )
       let snapshot = try await SnapshotEnvelope(
         snapshot: account.snapshot,
-        seqNr: 1,
+        appliedSeqNr: 1,
         version: 1,
         lastUpdatedAt: now,
       )
@@ -170,7 +170,7 @@ import Testing
       )
       let snapshot = try await SnapshotEnvelope(
         snapshot: account.snapshot,
-        seqNr: 2,
+        appliedSeqNr: 2,
         version: 1,
         lastUpdatedAt: now,
       )
@@ -218,7 +218,7 @@ import Testing
       )
       let snapshot = try await SnapshotEnvelope(
         snapshot: account.snapshot,
-        seqNr: 1,
+        appliedSeqNr: 1,
         version: 1,
         lastUpdatedAt: now,
       )
@@ -266,7 +266,7 @@ import Testing
       )
       let snapshot = try await SnapshotEnvelope(
         snapshot: account.snapshot,
-        seqNr: 1,
+        appliedSeqNr: 1,
         version: 1,
         lastUpdatedAt: now,
       )
@@ -310,7 +310,7 @@ import Testing
       )
       let snapshot = try await SnapshotEnvelope(
         snapshot: account.snapshot,
-        seqNr: 1,
+        appliedSeqNr: 1,
         version: 1,
         lastUpdatedAt: now,
       )
@@ -353,7 +353,7 @@ import Testing
       )
       let persistedSnapshot = try await SnapshotEnvelope(
         snapshot: account.snapshot,
-        seqNr: 1,
+        appliedSeqNr: 1,
         version: 1,
         lastUpdatedAt: createdAt,
       )
@@ -371,7 +371,7 @@ import Testing
       )
       let retriedSnapshot = try await SnapshotEnvelope(
         snapshot: retriedAccount.snapshot,
-        seqNr: 1,
+        appliedSeqNr: 1,
         version: 1,
         lastUpdatedAt: retriedAt,
       )
@@ -415,7 +415,7 @@ import Testing
         ),
         snapshot: try await SnapshotEnvelope(
           snapshot: account.snapshot,
-          seqNr: 1,
+          appliedSeqNr: 1,
           version: 1,
           lastUpdatedAt: createdAt,
         ),
@@ -429,14 +429,14 @@ import Testing
       let winningEvent = try EventEnvelope(
         id: UUID(),
         aid: aid,
-        seqNr: initialSnapshot.seqNr + 1,
+        seqNr: initialSnapshot.appliedSeqNr + 1,
         occurredAt: winningUpdatedAt,
         event: try await winningAccount.deactivate(),
         metadata: ["source": "event-store-test"],
       )
       let winningSnapshot = try await SnapshotEnvelope(
         snapshot: winningAccount.snapshot,
-        seqNr: initialSnapshot.seqNr + 1,
+        appliedSeqNr: initialSnapshot.appliedSeqNr + 1,
         version: initialSnapshot.version,
         lastUpdatedAt: winningUpdatedAt,
       )
@@ -446,14 +446,14 @@ import Testing
       let staleEvent = try EventEnvelope(
         id: UUID(),
         aid: aid,
-        seqNr: initialSnapshot.seqNr + 1,
+        seqNr: initialSnapshot.appliedSeqNr + 1,
         occurredAt: staleUpdatedAt,
         event: try await staleAccount.rename(to: "Eve"),
         metadata: ["source": "event-store-test"],
       )
       let staleSnapshot = try await SnapshotEnvelope(
         snapshot: staleAccount.snapshot,
-        seqNr: initialSnapshot.seqNr + 1,
+        appliedSeqNr: initialSnapshot.appliedSeqNr + 1,
         version: initialSnapshot.version,
         lastUpdatedAt: staleUpdatedAt,
       )

@@ -9,7 +9,7 @@ import Testing
     )
     let snapshot = try SnapshotEnvelope<UserAccount.Snapshot>(
       snapshot: .init(id: aid, state: .active),
-      seqNr: 1,
+      appliedSeqNr: 1,
       version: 1,
       lastUpdatedAt: Date(timeIntervalSince1970: 1),
     )
@@ -28,7 +28,7 @@ import Testing
     )
     let expected = try SnapshotEnvelope<UserAccount.Snapshot>(
       snapshot: .init(id: aid, state: .active),
-      seqNr: 1,
+      appliedSeqNr: 1,
       version: 1,
       lastUpdatedAt: Date(timeIntervalSince1970: 1),
     )
@@ -41,7 +41,7 @@ import Testing
         },
         "lastUpdatedAt": -978307199,
         "payload": "eyJpZCI6eyJ2YWx1ZSI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSJ9LCJzdGF0ZSI6ImFjdGl2ZSJ9",
-        "seqNr": 1,
+        "appliedSeqNr": 1,
         "version": 1
       }
       """
@@ -59,7 +59,7 @@ import Testing
     )
     let snapshot = try SnapshotEnvelope<UserAccount.Snapshot>(
       snapshot: .init(id: aid, state: .active),
-      seqNr: 1,
+      appliedSeqNr: 1,
       version: 1,
       lastUpdatedAt: Date(timeIntervalSince1970: 1),
     )
@@ -69,7 +69,7 @@ import Testing
 
     #expect(
       String(decoding: data, as: UTF8.self)
-        == #"{"aggregate":"UserAccount","aid":{"value":"00000000-0000-0000-0000-000000000001"},"lastUpdatedAt":-978307199,"payload":"eyJpZCI6eyJ2YWx1ZSI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSJ9LCJzdGF0ZSI6ImFjdGl2ZSJ9","seqNr":1,"version":1}"#
+        == #"{"aggregate":"UserAccount","aid":{"value":"00000000-0000-0000-0000-000000000001"},"appliedSeqNr":1,"lastUpdatedAt":-978307199,"payload":"eyJpZCI6eyJ2YWx1ZSI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSJ9LCJzdGF0ZSI6ImFjdGl2ZSJ9","version":1}"#
     )
   }
 }
