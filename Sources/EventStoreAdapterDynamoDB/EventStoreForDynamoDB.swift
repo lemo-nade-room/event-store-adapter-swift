@@ -8,22 +8,24 @@ public import SotoDynamoDB
 /// A DynamoDB-backed event store for events and aggregate snapshots.
 ///
 /// The store writes events to a journal table and keeps one current snapshot
-/// record per aggregate in a snapshot table. Both tables use `pkey` (String)
-/// and `skey` (String) as their primary key. Events and snapshots are read
-/// directly from these tables with strongly consistent reads; secondary
+/// record per aggregate in a snapshot table. Both tables use `aid_pkey` (String)
+/// as their partition key. Only the journal has a sort key: `seq_nr` (Number).
+/// Events and snapshots are read directly with strongly consistent reads; secondary
 /// indexes are not required. The library does not create or validate this schema.
 ///
-/// The default key resolver gives each aggregate its own partition key using
-/// its type name and ID. The default serializers
-/// store event and snapshot bytes as DynamoDB binary attributes. Use the
+/// Each aggregate's partition key is `<AID.name>-<aid.description>`. Type names
+/// and ID descriptions must be stable, and their hyphen-joined keys must be
+/// unambiguous across aggregate types sharing a table. Neither component is
+/// escaped. The default serializers store event and snapshot bytes as DynamoDB
+/// binary attributes. Use the
 /// custom serializers when the table contains a different wire format, and
 /// keep them compatible with all records that must remain readable.
 ///
 /// Writes that include a snapshot use one DynamoDB transaction. A creation
 /// event (`seqNr == 1`) inserts the initial snapshot with version `1`. The
-/// snapshot sort key is always resolved with marker `0`, while its `seq_nr`
-/// attribute stores the event's actual sequence number. Later events update
-/// that same snapshot record only when its stored version equals the supplied
+/// snapshot's `last_committed_seq_nr` and `applied_seq_nr` both store the event's
+/// sequence number. Later events update that same snapshot record only when
+/// its stored version equals the supplied
 /// snapshot version, then persist the event and the incremented snapshot
 /// version atomically.
 ///
@@ -55,10 +57,6 @@ public struct EventStoreForDynamoDB<
 
   /// The DynamoDB table that stores the current snapshot for each aggregate.
   public var snapshotTableName: String
-  /// The resolver used to derive the DynamoDB primary-key strings.
-  ///
-  /// It must remain compatible with the resolver used for existing records.
-  public var keyResolver: KeyResolver<AID>
 
   /// The serializer used for journal event envelopes.
   public var eventSerializer: EventEnvelopeSerializer<EventEnvelope>
@@ -76,13 +74,12 @@ public struct EventStoreForDynamoDB<
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - journalTableName: The journal table name. Uses ``defaultJournalTableName`` when `nil`.
   ///   - snapshotTableName: The snapshot table name. Uses ``defaultSnapshotTableName`` when `nil`.
-  ///   - keyResolver: The primary-key resolver. Defaults to ``KeyResolver``'s
-  ///     resolver based on the aggregate type name and ID.
   ///   - eventSerializer: The event envelope serializer.
   ///   - snapshotSerializer: The snapshot envelope serializer.
   ///
-  /// Both tables must already exist with a string partition key named `pkey`
-  /// and a string sort key named `skey`. This initializer does not perform a schema check.
+  /// Both tables must already exist with a string partition key named `aid_pkey`.
+  /// The journal must have a numeric sort key named `seq_nr`, and the snapshot
+  /// table must have no sort key. This initializer does not perform a schema check.
   /// The event and snapshot serializers must be able to read any existing
   /// records that this store will query.
   public init(
@@ -90,7 +87,6 @@ public struct EventStoreForDynamoDB<
     dynamoDB: DynamoDB,
     journalTableName: String? = nil,
     snapshotTableName: String? = nil,
-    keyResolver: KeyResolver<AID> = .init(),
     eventSerializer: EventEnvelopeSerializer<EventEnvelope>,
     snapshotSerializer: SnapshotEnvelopeSerializer<SnapshotEnvelope>,
   ) {
@@ -98,7 +94,6 @@ public struct EventStoreForDynamoDB<
     self.dynamoDB = dynamoDB
     self.journalTableName = journalTableName ?? Self.defaultJournalTableName
     self.snapshotTableName = snapshotTableName ?? Self.defaultSnapshotTableName
-    self.keyResolver = keyResolver
     self.eventSerializer = eventSerializer
     self.snapshotSerializer = snapshotSerializer
   }
@@ -114,14 +109,12 @@ public struct EventStoreForDynamoDB<
   ///   - logger: The logger passed to Soto DynamoDB operations.
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - config: The configuration reader for table names.
-  ///   - keyResolver: The primary-key resolver.
   ///   - eventSerializer: The event envelope serializer.
   ///   - snapshotSerializer: The snapshot envelope serializer.
   public init(
     logger: Logger,
     dynamoDB: DynamoDB,
     config: ConfigReader,
-    keyResolver: KeyResolver<AID> = .init(),
     eventSerializer: EventEnvelopeSerializer<EventEnvelope>,
     snapshotSerializer: SnapshotEnvelopeSerializer<SnapshotEnvelope>,
   ) {
@@ -130,7 +123,6 @@ public struct EventStoreForDynamoDB<
       dynamoDB: dynamoDB,
       journalTableName: config.string(forKey: "journal.table.name"),
       snapshotTableName: config.string(forKey: "snapshot.table.name"),
-      keyResolver: keyResolver,
       eventSerializer: eventSerializer,
       snapshotSerializer: snapshotSerializer,
     )
@@ -156,16 +148,17 @@ public struct EventStoreForDynamoDB<
 
   /// Persists an event and its corresponding snapshot in one DynamoDB transaction.
   ///
-  /// The event and snapshot must describe the same aggregate and sequence
-  /// number. The adapter serializes both values before issuing the transaction.
+  /// The event and snapshot must describe the same aggregate, and the event's
+  /// `seqNr` must equal the snapshot's `appliedSeqNr`. The adapter serializes
+  /// both values before issuing the transaction.
   /// If either serializer fails, no write is attempted and the error is
   /// wrapped as `EventStoreWriteError.serializationError`.
   ///
   /// For a creation event (`event.seqNr == 1`), the adapter conditionally
   /// inserts the snapshot row with `version == 1` and the event row at the
-  /// event's sequence number. The snapshot sort key always uses marker `0`,
-  /// while its `seq_nr` attribute stores `event.seqNr`. For every other
-  /// sequence number, it conditionally updates the existing snapshot row when
+  /// event's sequence number. Both `last_committed_seq_nr` and `applied_seq_nr`
+  /// store `event.seqNr`. For every other sequence number, it conditionally
+  /// updates the existing snapshot row when
   /// its stored `version` equals `snapshot.version`, writes the event row, and
   /// stores the snapshot with version `snapshot.version + 1`. Both operations
   /// are committed atomically.
@@ -181,18 +174,15 @@ public struct EventStoreForDynamoDB<
   /// than overwriting data. A different DynamoDB failure is reported as
   /// `EventStoreWriteError.IOError`.
   ///
-  /// The initial snapshot item contains a numeric `ttl` attribute set to `0`.
-  /// This adapter does not calculate or update an expiration time. DynamoDB
-  /// TTL values are Unix epoch timestamps in seconds, and a value of `0` is
-  /// the Unix epoch rather than a relative duration. Do not rely on this
-  /// placeholder for cleanup; if TTL is enabled for the table, DynamoDB's TTL
-  /// rules apply (including its handling of timestamps more than five years in
-  /// the past).
+  /// Both rows retain `aggregate_name` and the original `aid` independently of
+  /// the partition key. The snapshot's `last_updated_at` is the event's
+  /// occurrence time in Unix epoch milliseconds, rounded down. The serialized
+  /// snapshot's `lastUpdatedAt` is retained as supplied by the caller.
   ///
   /// - Parameters:
   ///   - event: The event to persist. Its `aid` and `seqNr` must match the
-  ///     snapshot. A sequence number of `1` selects creation behavior; the
-  ///     implementation treats other values as update behavior.
+  ///     snapshot's `aid` and `appliedSeqNr`. A sequence number of `1` selects
+  ///     creation behavior; other values select update behavior.
   ///   - snapshot: The aggregate snapshot at the event's sequence number. Its
   ///     `version` is the expected stored snapshot version for an update and
   ///     is replaced by the incremented version in the persisted copy. For a
@@ -206,7 +196,7 @@ public struct EventStoreForDynamoDB<
     guard event.aid == snapshot.aid else {
       throw EventStoreWriteError.otherError("event and snapshot aggregate IDs do not match")
     }
-    guard event.seqNr == snapshot.seqNr else {
+    guard event.seqNr == snapshot.appliedSeqNr else {
       throw EventStoreWriteError.otherError("event and snapshot sequence numbers do not match")
     }
     guard let occurredAtMilliseconds = unixTimestampMilliseconds(event.occurredAt) else {
@@ -235,15 +225,15 @@ public struct EventStoreForDynamoDB<
       if isInitialEvent {
         .put(
           .init(
-            conditionExpression: "attribute_not_exists(pkey) AND attribute_not_exists(skey)",
+            conditionExpression: "attribute_not_exists(aid_pkey)",
             item: [
-              "pkey": .s(keyResolver.resolvePartitionKey(event.aid)),
-              "skey": .s(keyResolver.resolveSortKey(0)),
+              "aid_pkey": .s(resolveAIDPartitionKey(aid: event.aid)),
+              "aggregate_name": .s(AID.name),
               "aid": .s(event.aid.description),
-              "seq_nr": .n(String(event.seqNr)),
+              "last_committed_seq_nr": .n(String(event.seqNr)),
+              "applied_seq_nr": .n(String(snapshot.appliedSeqNr)),
               "payload": .b(.data(snapshotPayload)),
               "version": .n("1"),
-              "ttl": .n("0"),
               "last_updated_at": .n(String(occurredAtMilliseconds)),
             ],
             tableName: snapshotTableName,
@@ -255,24 +245,25 @@ public struct EventStoreForDynamoDB<
             conditionExpression: "#version = :before_version",
             expressionAttributeNames: [
               "#payload": "payload",
-              "#seq_nr": "seq_nr",
+              "#last_committed_seq_nr": "last_committed_seq_nr",
+              "#applied_seq_nr": "applied_seq_nr",
               "#version": "version",
               "#last_updated_at": "last_updated_at",
             ],
             expressionAttributeValues: [
               ":payload": .b(.data(snapshotPayload)),
-              ":seq_nr": .n(String(event.seqNr)),
+              ":last_committed_seq_nr": .n(String(event.seqNr)),
+              ":applied_seq_nr": .n(String(snapshot.appliedSeqNr)),
               ":before_version": .n(String(snapshot.version)),
               ":after_version": .n(String(snapshot.version + 1)),
               ":last_updated_at": .n(String(occurredAtMilliseconds)),
             ],
             key: [
-              "pkey": .s(keyResolver.resolvePartitionKey(event.aid)),
-              "skey": .s(keyResolver.resolveSortKey(0)),
+              "aid_pkey": .s(resolveAIDPartitionKey(aid: event.aid))
             ],
             tableName: snapshotTableName,
             updateExpression:
-              "SET #seq_nr = :seq_nr, #payload = :payload, #version = :after_version, #last_updated_at = :last_updated_at",
+              "SET #last_committed_seq_nr = :last_committed_seq_nr, #applied_seq_nr = :applied_seq_nr, #payload = :payload, #version = :after_version, #last_updated_at = :last_updated_at",
           )
         )
       }
@@ -283,10 +274,10 @@ public struct EventStoreForDynamoDB<
             snapshotTransactItem,
             .put(
               .init(
-                conditionExpression: "attribute_not_exists(pkey) AND attribute_not_exists(skey)",
+                conditionExpression: "attribute_not_exists(aid_pkey) AND attribute_not_exists(seq_nr)",
                 item: [
-                  "pkey": .s(keyResolver.resolvePartitionKey(event.aid)),
-                  "skey": .s(keyResolver.resolveSortKey(event.seqNr)),
+                  "aid_pkey": .s(resolveAIDPartitionKey(aid: event.aid)),
+                  "aggregate_name": .s(AID.name),
                   "aid": .s(event.aid.description),
                   "seq_nr": .n(String(event.seqNr)),
                   "payload": .b(.data(eventPayload)),
@@ -308,15 +299,11 @@ public struct EventStoreForDynamoDB<
 
   /// Reads the current snapshot for an aggregate ID.
   ///
-  /// Snapshots are stored as one row per aggregate whose sort key is resolved
-  /// with marker `0`. This method uses a strongly consistent `GetItem` with
-  /// the configured key resolver, deserializes the binary
-  /// `payload`, and restores the stored version on the returned snapshot.
-  /// It does not require a snapshot index or filter on `seq_nr`.
-  ///
-  /// The snapshot's sequence number comes from its serialized envelope, so
-  /// rows whose `seq_nr` attribute is still `0` remain readable when the
-  /// configured key resolver matches their stored primary keys.
+  /// Snapshots are stored as one row per aggregate, addressed by `aid_pkey`
+  /// alone. This method uses a strongly consistent `GetItem`, deserializes the
+  /// binary `payload`, and restores `version` from its stored numeric
+  /// attribute. The snapshot's `appliedSeqNr` comes from the deserialized
+  /// envelope.
   ///
   /// The method returns `nil` when the primary key has no matching row. It does not
   /// reconstruct a snapshot from journal events.
@@ -336,8 +323,7 @@ public struct EventStoreForDynamoDB<
         .init(
           consistentRead: true,
           key: [
-            "pkey": .s(keyResolver.resolvePartitionKey(aid)),
-            "skey": .s(keyResolver.resolveSortKey(0)),
+            "aid_pkey": .s(resolveAIDPartitionKey(aid: aid))
           ],
           tableName: snapshotTableName,
         ),
@@ -373,9 +359,9 @@ public struct EventStoreForDynamoDB<
   /// Reads events for an aggregate from an inclusive sequence number.
   ///
   /// The method queries the journal table with strongly consistent reads.
-  /// The configured resolver determines the aggregate's unique partition key
-  /// and the inclusive sort-key lower bound for `seqNr`. Its sort keys must
-  /// preserve sequence-number order as described by ``KeyResolver/resolveSortKey``.
+  /// The partition key is `<AID.name>-<aid.description>`.
+  /// The numeric `seq_nr` sort key provides the inclusive lower bound and
+  /// ascending sequence-number order without string padding.
   /// The partition key identifies the aggregate, so no `aid` filter is needed.
   ///
   /// The method returns one query page, subject to DynamoDB's 1 MB limit.
@@ -386,7 +372,7 @@ public struct EventStoreForDynamoDB<
   /// - Parameters:
   ///   - aid: The aggregate ID whose events are requested.
   ///   - seqNr: The inclusive lower bound for the event sequence number.
-  ///     Passed unchanged to ``KeyResolver/resolveSortKey``.
+  ///     Used directly as a DynamoDB Number.
   /// - Returns: Matching decoded events from the first query page in ascending
   ///   sequence-number order, or an empty array when no events match.
   /// - Throws: `EventStoreReadError.IOError` when the DynamoDB query fails;
@@ -401,14 +387,14 @@ public struct EventStoreForDynamoDB<
         .init(
           consistentRead: true,
           expressionAttributeNames: [
-            "#pkey": "pkey",
-            "#skey": "skey",
+            "#aid_pkey": "aid_pkey",
+            "#seq_nr": "seq_nr",
           ],
           expressionAttributeValues: [
-            ":pkey": .s(keyResolver.resolvePartitionKey(aid)),
-            ":skey": .s(keyResolver.resolveSortKey(seqNr)),
+            ":aid_pkey": .s(resolveAIDPartitionKey(aid: aid)),
+            ":seq_nr": .n(String(seqNr)),
           ],
-          keyConditionExpression: "#pkey = :pkey AND #skey >= :skey",
+          keyConditionExpression: "#aid_pkey = :aid_pkey AND #seq_nr >= :seq_nr",
           tableName: journalTableName,
         ),
         logger: logger,
@@ -466,20 +452,17 @@ extension EventStoreForDynamoDB where EventEnvelope: Codable, SnapshotEnvelope: 
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - journalTableName: The journal table name. Uses ``defaultJournalTableName`` when `nil`.
   ///   - snapshotTableName: The snapshot table name. Uses ``defaultSnapshotTableName`` when `nil`.
-  ///   - keyResolver: The primary-key resolver.
   public init(
     logger: Logger,
     dynamoDB: DynamoDB,
     journalTableName: String? = nil,
     snapshotTableName: String? = nil,
-    keyResolver: KeyResolver<AID> = .init(),
   ) {
     self.init(
       logger: logger,
       dynamoDB: dynamoDB,
       journalTableName: journalTableName,
       snapshotTableName: snapshotTableName,
-      keyResolver: keyResolver,
       eventSerializer: .json(),
       snapshotSerializer: .json(),
     )
@@ -493,18 +476,15 @@ extension EventStoreForDynamoDB where EventEnvelope: Codable, SnapshotEnvelope: 
   ///   - logger: The logger passed to Soto DynamoDB operations.
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - config: The reader for `journal.table.name` and `snapshot.table.name`.
-  ///   - keyResolver: The primary-key resolver.
   public init(
     logger: Logger,
     dynamoDB: DynamoDB,
     config: ConfigReader,
-    keyResolver: KeyResolver<AID> = .init(),
   ) {
     self.init(
       logger: logger,
       dynamoDB: dynamoDB,
       config: config,
-      keyResolver: keyResolver,
       eventSerializer: .json(),
       snapshotSerializer: .json(),
     )
@@ -524,14 +504,12 @@ extension EventStoreForDynamoDB where SnapshotEnvelope: Codable {
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - journalTableName: The journal table name. Uses ``defaultJournalTableName`` when `nil`.
   ///   - snapshotTableName: The snapshot table name. Uses ``defaultSnapshotTableName`` when `nil`.
-  ///   - keyResolver: The primary-key resolver.
   ///   - eventSerializer: The serializer for event envelopes.
   public init(
     logger: Logger,
     dynamoDB: DynamoDB,
     journalTableName: String? = nil,
     snapshotTableName: String? = nil,
-    keyResolver: KeyResolver<AID> = .init(),
     eventSerializer: EventEnvelopeSerializer<EventEnvelope>,
   ) {
     self.init(
@@ -539,7 +517,6 @@ extension EventStoreForDynamoDB where SnapshotEnvelope: Codable {
       dynamoDB: dynamoDB,
       journalTableName: journalTableName,
       snapshotTableName: snapshotTableName,
-      keyResolver: keyResolver,
       eventSerializer: eventSerializer,
       snapshotSerializer: .json(),
     )
@@ -554,20 +531,17 @@ extension EventStoreForDynamoDB where SnapshotEnvelope: Codable {
   ///   - logger: The logger passed to Soto DynamoDB operations.
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - config: The reader for `journal.table.name` and `snapshot.table.name`.
-  ///   - keyResolver: The primary-key resolver.
   ///   - eventSerializer: The serializer for event envelopes.
   public init(
     logger: Logger,
     dynamoDB: DynamoDB,
     config: ConfigReader,
-    keyResolver: KeyResolver<AID> = .init(),
     eventSerializer: EventEnvelopeSerializer<EventEnvelope>,
   ) {
     self.init(
       logger: logger,
       dynamoDB: dynamoDB,
       config: config,
-      keyResolver: keyResolver,
       eventSerializer: eventSerializer,
       snapshotSerializer: .json(),
     )
@@ -587,14 +561,12 @@ extension EventStoreForDynamoDB where EventEnvelope: Codable {
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - journalTableName: The journal table name. Uses ``defaultJournalTableName`` when `nil`.
   ///   - snapshotTableName: The snapshot table name. Uses ``defaultSnapshotTableName`` when `nil`.
-  ///   - keyResolver: The primary-key resolver.
   ///   - snapshotSerializer: The serializer for snapshot envelopes.
   public init(
     logger: Logger,
     dynamoDB: DynamoDB,
     journalTableName: String? = nil,
     snapshotTableName: String? = nil,
-    keyResolver: KeyResolver<AID> = .init(),
     snapshotSerializer: SnapshotEnvelopeSerializer<SnapshotEnvelope>,
   ) {
     self.init(
@@ -602,7 +574,6 @@ extension EventStoreForDynamoDB where EventEnvelope: Codable {
       dynamoDB: dynamoDB,
       journalTableName: journalTableName,
       snapshotTableName: snapshotTableName,
-      keyResolver: keyResolver,
       eventSerializer: .json(),
       snapshotSerializer: snapshotSerializer,
     )
@@ -617,20 +588,17 @@ extension EventStoreForDynamoDB where EventEnvelope: Codable {
   ///   - logger: The logger passed to Soto DynamoDB operations.
   ///   - dynamoDB: The configured Soto DynamoDB service client.
   ///   - config: The reader for `journal.table.name` and `snapshot.table.name`.
-  ///   - keyResolver: The primary-key resolver.
   ///   - snapshotSerializer: The serializer for snapshot envelopes.
   public init(
     logger: Logger,
     dynamoDB: DynamoDB,
     config: ConfigReader,
-    keyResolver: KeyResolver<AID> = .init(),
     snapshotSerializer: SnapshotEnvelopeSerializer<SnapshotEnvelope>,
   ) {
     self.init(
       logger: logger,
       dynamoDB: dynamoDB,
       config: config,
-      keyResolver: keyResolver,
       eventSerializer: .json(),
       snapshotSerializer: snapshotSerializer,
     )

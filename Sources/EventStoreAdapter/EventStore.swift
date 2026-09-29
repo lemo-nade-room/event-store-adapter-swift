@@ -7,9 +7,9 @@
 ///
 /// Callers should supply an event and snapshot to
 /// ``persistEventAndSnapshot(event:snapshot:)`` that represent the same aggregate
-/// and sequence number. For a new aggregate, use its creation event and its
-/// initial snapshot at sequence number `1` by convention. A conforming store
-/// defines how it validates these relationships.
+/// with `event.seqNr == snapshot.appliedSeqNr`. For a new aggregate, use its
+/// creation event and initial snapshot at sequence number `1` by convention.
+/// A conforming store defines how it validates these relationships.
 public protocol EventStore<EventEnvelope, SnapshotEnvelope>: Swift.Sendable {
   /// The event envelope type stored by this event store.
   associatedtype EventEnvelope: EventStoreAdapter.EventEnvelopeProtocol
@@ -37,7 +37,8 @@ public protocol EventStore<EventEnvelope, SnapshotEnvelope>: Swift.Sendable {
   ///
   /// Use this operation when creating an aggregate or when a write should update
   /// the snapshot and append its event as one logical operation. The event and
-  /// snapshot should have equal aggregate IDs and equal sequence numbers.
+  /// snapshot should have equal aggregate IDs, and the snapshot's `appliedSeqNr`
+  /// should equal the event's `seqNr`.
   ///
   /// - Parameters:
   ///   - event: The event to persist.
@@ -56,7 +57,7 @@ public protocol EventStore<EventEnvelope, SnapshotEnvelope>: Swift.Sendable {
   /// Returns an aggregate's events starting at a sequence number.
   ///
   /// The lower bound is inclusive. To replay the events after a snapshot, pass
-  /// `snapshot.seqNr + 1` as `seqNr`. Conforming stores are expected to return
+  /// `snapshot.appliedSeqNr + 1` as `seqNr`. Conforming stores are expected to return
   /// results in ascending sequence-number order.
   ///
   /// - Parameters:

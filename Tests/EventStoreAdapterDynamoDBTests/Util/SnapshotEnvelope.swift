@@ -7,21 +7,21 @@ struct SnapshotEnvelope<
   var aggregate: String
   var payload: Data
   var aid: Snapshot.ID
-  var seqNr: Int
+  var appliedSeqNr: Int
   var version: Int
   var lastUpdatedAt: Date
 
   init(
     aggregate: String = Snapshot.ID.name,
     snapshot: Snapshot,
-    seqNr: Int,
+    appliedSeqNr: Int,
     version: Int,
     lastUpdatedAt: Date,
   ) throws {
     self.aggregate = aggregate
     self.payload = try deterministicJSONData(snapshot)
     self.aid = snapshot.id
-    self.seqNr = seqNr
+    self.appliedSeqNr = appliedSeqNr
     self.version = version
     self.lastUpdatedAt = lastUpdatedAt
   }

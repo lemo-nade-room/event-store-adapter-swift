@@ -46,7 +46,7 @@ context propagation remain application responsibilities.
 | Product                     | Purpose                                                                                                       |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `EventStoreAdapter`         | `AggregateId`, `EventEnvelopeProtocol`, `SnapshotEnvelopeProtocol`, `EventStore`, and read/write error types. |
-| `EventStoreAdapterDynamoDB` | The Soto adapter, configuration, key resolution, and event/snapshot serializers.                              |
+| `EventStoreAdapterDynamoDB` | The Soto adapter, configuration, and event/snapshot serializers.                              |
 
 The DynamoDB adapter writes an event and its snapshot in one transaction, detects conflicting writes through
 conditional expressions, and keeps one current snapshot per aggregate.
@@ -107,7 +107,8 @@ in `Sources/Example/Example.swift` in the consuming package and run `swift run E
 ### Define the stored values
 
 An event contains a payload, an event ID, an aggregate ID, a sequence number, and an occurrence time. A snapshot
-contains the aggregate state, aggregate ID, sequence number, concurrency version, and last-update time.
+contains the aggregate state, aggregate ID, payload's applied event number,
+concurrency version, and last-update time.
 
 The protocols require `Sendable` and `Hashable`, but not `Codable`. These example types also conform to `Codable`
 so they can use the built-in JSON serializers.
@@ -163,15 +164,15 @@ struct AccountSnapshot: SnapshotEnvelopeProtocol, Codable {
 
   let payload: Payload
   let aid: AccountID
-  let seqNr: Int
+  let appliedSeqNr: Int
   var version: Int
   let lastUpdatedAt: Date
 }
 ```
 
-The `AccountID` string in this example includes its aggregate type. The default partition key also includes
-`AggregateId.name`, so ID strings only need to be unique within their aggregate type. Custom key resolvers must
-give every aggregate its own partition key across all types. Keep type names and ID strings stable after storing data.
+The `AccountID` string in this example includes its aggregate type. The partition key also includes
+`AggregateId.name`, so ID strings only need to be unique within their aggregate type. Keep type names and ID strings
+stable after storing data, and ensure their hyphen-joined keys are unambiguous across all aggregate types.
 
 ### Create, update, and read
 
@@ -208,7 +209,7 @@ struct Example {
       let initialSnapshot = AccountSnapshot(
         payload: .init(name: "Alice"),
         aid: aid,
-        seqNr: 1,
+        appliedSeqNr: 1,
         version: 1,
         lastUpdatedAt: createdAt,
       )
@@ -225,7 +226,7 @@ struct Example {
       let updatedSnapshot = AccountSnapshot(
         payload: .init(name: "Alicia"),
         aid: aid,
-        seqNr: 2,
+        appliedSeqNr: 2,
         version: 1,  // Expected stored version, before this update.
         lastUpdatedAt: renamedAt,
       )
@@ -252,8 +253,9 @@ for the lifetime of your application rather than creating one for each write.
 
 ## Write and read behavior
 
-`persistEventAndSnapshot` requires matching `aid` and `seqNr` values on the event and snapshot. It serializes both
-values before making a DynamoDB request.
+`persistEventAndSnapshot` requires matching aggregate IDs and `event.seqNr == snapshot.appliedSeqNr`. It serializes
+both envelopes before making a DynamoDB request. The snapshot row's `last_committed_seq_nr` comes from `event.seqNr`;
+both snapshot sequence attributes advance to that number in the same transaction.
 
 | Write                     | Snapshot behavior                                                                                                           | Journal behavior                                    |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
@@ -267,17 +269,18 @@ increments the version in the stored copy. With a struct snapshot, the value you
 successful write, your application can track the incremented version locally or reload the snapshot with a strongly
 consistent read.
 
-Your application must assign valid, increasing sequence numbers. The adapter checks that event and snapshot
-sequence numbers match, but does not check that an update immediately follows the previous stored sequence number.
+Your application must assign valid, increasing sequence numbers. The adapter checks that `event.seqNr` and
+`snapshot.appliedSeqNr` match, but does not check that an update immediately follows the previous stored sequence number.
 It also does not apply an event to the snapshot for you.
 
 `getLatestSnapshotByAID` reads the current snapshot by primary key with a strongly consistent `GetItem`, or returns
-`nil` if no row exists. It restores the snapshot's `version` from the stored numeric attribute. The snapshot sort
-key is resolved with marker `0`, independently of the `seq_nr` attribute. The configured key resolver must match
-the one used to write the row. The caller needs `dynamodb:GetItem` permission on the snapshot table.
+`nil` if no row exists. It restores `version` from the stored numeric attribute and takes `appliedSeqNr` from the
+deserialized snapshot envelope. To replay events after the stored state, start at
+`snapshot.appliedSeqNr + 1`. Reads and writes always derive `aid_pkey` from the aggregate type name and ID.
+The caller needs `dynamodb:GetItem` permission on the snapshot table.
 
-`getEventsByAIDSinceSequenceNumber` queries the journal table with strongly consistent reads. It uses the resolved
-`pkey` and an **inclusive** `skey` lower bound for `seqNr`, and returns events in ascending
+`getEventsByAIDSinceSequenceNumber` queries the journal table with strongly consistent reads. It uses
+`aid_pkey` and an **inclusive** numeric `seq_nr` lower bound, and returns events in ascending
 sequence order from the first query page. The partition key identifies one aggregate, so no `aid` filter is required.
 The method returns an empty array when no events match.
 The caller needs `dynamodb:Query` permission on the journal table.
@@ -305,48 +308,57 @@ Create both tables before using the adapter. It does not create or validate them
 | `journalTableName`     | `journal`   |
 | `snapshotTableName`    | `snapshot`  |
 
-Both tables have the same primary key types:
-
-| Key                      | Partition key   | Sort key          |
-| ------------------------ | --------------- | ----------------- |
-| Table primary key        | `pkey` (String) | `skey` (String)   |
-
-The default partition key is `<AggregateId.name>-<ID string>`. Type names and ID descriptions must be canonical
+The `aid_pkey` is always `<AggregateId.name>-<ID string>`. Type names and ID descriptions must be canonical
 and stable, and their hyphen-joined keys must be unambiguous across aggregate types sharing a table.
-Neither component is escaped.
-The sort key contains only the sequence number padded to 19 digits.
-Nineteen digits cover every nonnegative `Int64` value: `1` becomes `0000000000000000001`, and `Int64.max` is
-`9223372036854775807`. This keeps lexicographic order consistent with numeric sequence order within an aggregate.
+Neither component is escaped. Partition-key generation is fixed and cannot be customized.
 
-DynamoDB hashes partition keys and manages physical partitions itself; the adapter does not need a fixed logical
-shard count. Reducing an aggregate ID hash modulo a shard count would group different aggregates together without
-distributing the events of a single busy aggregate. The type name and original ID identify the aggregate;
-no hash is added to the key.
-See [DynamoDB data distribution](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.Partitions.html).
+### Snapshot table
 
-| Attribute                  | Journal row                                                     | Snapshot row                                                                        |
-| -------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `aid`                      | The aggregate ID string.                                        | The aggregate ID string.                                                            |
-| `seq_nr`                   | The event's sequence number.                                    | The latest event sequence number represented by the snapshot.                       |
-| `payload` (Binary)         | The complete serialized event value.                            | The serialized snapshot, including its logical sequence number and updated version. |
-| `version` (Number)         | Not written.                                                    | `1` on creation; incremented on each successful update.                             |
-| `occurred_at` (Number)     | The event's occurrence time in Unix milliseconds, rounded down. | Not written.                                                                        |
-| `last_updated_at` (Number) | Not written.                                                    | The event's occurrence time in Unix milliseconds, rounded down.                     |
-| `ttl` (Number)             | Not written.                                                    | Set to `0` on creation; no expiration time is managed by the adapter.               |
+| Attribute | DynamoDB type | Meaning |
+| --- | --- | --- |
+| `aid_pkey` | String | Partition key; the snapshot table has no sort key. |
+| `aggregate_name` | String | `AggregateId.name`. |
+| `aid` | String | The original aggregate ID's `description`. |
+| `last_committed_seq_nr` | Number | The latest event sequence number committed to the journal. |
+| `applied_seq_nr` | Number | The latest event represented by the stored snapshot payload. |
+| `payload` | Binary | The complete serialized snapshot envelope. |
+| `version` | Number | `1` on creation; incremented on each successful update. |
+| `last_updated_at` | Number | The event's occurrence time in Unix epoch milliseconds, rounded down. |
 
-The snapshot sort key always uses marker `0`, padded by the default resolver as
-`0000000000000000000`, while both its `seq_nr` attribute and serialized `seqNr` contain
-the actual event sequence number. Rows with `seq_nr = 0` remain readable when the configured key resolver matches
-their stored primary keys, because the returned sequence number comes from the serialized envelope. Their `seq_nr`
-attribute is updated on the next successful snapshot write. The snapshot's
-`lastUpdatedAt` is serialized as supplied; the separate `last_updated_at` attribute is derived from `event.occurredAt`.
+### Journal table
 
-**Key-format migration:** earlier versions grouped aggregates into `<type>-<hash % shardCount>` partition keys and
-included aggregate identity in sort keys, originally with unpadded sequence numbers. Before using the new default
-resolver with existing data, migrate **both `pkey` and `skey` in both tables**. A custom `KeyResolver` must match
-stored primary keys, give every aggregate its own partition key across all types, and produce strictly increasing
-UTF-8 sort keys for each aggregate across `0...Int.max`. The old shared partitions and unpadded journal keys do not
-satisfy these contracts. The adapter does not automatically migrate keys or fall back to the old format.
+| Attribute | DynamoDB type | Meaning |
+| --- | --- | --- |
+| `aid_pkey` | String | Partition key. |
+| `seq_nr` | Number | Sort key; the event's sequence number. |
+| `aggregate_name` | String | `AggregateId.name`. |
+| `aid` | String | The original aggregate ID's `description`. |
+| `payload` | Binary | The complete serialized event envelope. |
+| `occurred_at` | Number | The event's occurrence time in Unix epoch milliseconds, rounded down. |
+
+The adapter derives `aggregate_name` and `aid` from the same typed aggregate ID used to resolve `aid_pkey`,
+so consumers can identify the aggregate without parsing the physical key. Journal events sort numerically;
+there is no string padding or configurable sort-key encoding.
+
+`last_committed_seq_nr` and `applied_seq_nr` have different meanings even though the currently supported
+`persistEventAndSnapshot` operation advances both together. The former provides a commit position for Snapshot CDC;
+the latter identifies where aggregate replay starts. The committed position is table metadata; snapshot envelopes
+only need `appliedSeqNr` for their payload's position. Neither is the optimistic-lock revision `version`.
+Event-only writes, checkpoint storage, and CDC handlers are not implemented by this change.
+
+The serialized snapshot's `lastUpdatedAt` is retained as supplied. As in earlier versions, the separate
+`last_updated_at` attribute comes from `event.occurredAt`, not the wall-clock time of the database write.
+No `ttl` attribute is written.
+
+**Schema migration:** the former `pkey` / string `skey` tables are incompatible with this schema. Create new tables
+with the keys above and migrate existing records before switching the adapter's configured table names.
+For snapshots, remove the fixed sort-key slot, rename the payload's `seqNr` to `appliedSeqNr`, and populate both
+sequence attributes. The committed position must reflect the latest
+persisted journal event; do not infer it from `version`. For journals, store `seq_nr` as a Number sort key.
+Populate `aggregate_name` and the original `aid` for both tables, migrate the binary envelopes with compatible
+serializers, and remove obsolete `pkey`, `skey`, snapshot `seq_nr`, and `ttl` attributes.
+Keep the old tables until the migrated data and read/write paths have been verified. This adapter does not migrate
+data automatically or fall back to the previous schema.
 
 Pass optional `journalTableName:` and `snapshotTableName:` arguments directly to `EventStoreForDynamoDB`.
 A `nil` value uses `defaultJournalTableName` or `defaultSnapshotTableName`, respectively.
@@ -356,10 +368,10 @@ The separate `config:` initializer accepts a Swift Configuration `ConfigReader` 
 `journal.table.name` and `snapshot.table.name` with `string()` during initialization. Missing values use the
 same defaults. This initializer accepts no table-name arguments and does not throw.
 
-`shardCount` and the `shard.count` configuration key have been removed. The `resolvePartitionKey` closure now takes
-only the aggregate ID, and `resolveSortKey` takes only the sequence number.
-Changing the type name, ID representation, or key resolver after data has been written can
-make existing records inaccessible or cause writes to use different keys.
+`KeyResolver` and the `keyResolver` initializer arguments have been removed. Partition keys always use the
+aggregate type name and ID; journal sort keys are the unmodified numeric sequence numbers.
+Changing the type name or ID representation after data has been written can make existing records inaccessible
+or cause writes to use different keys.
 
 ## Serialization
 
@@ -425,15 +437,23 @@ export AWS_SECRET_ACCESS_KEY=dummy
 export AWS_DEFAULT_REGION=ap-northeast-1
 export AWS_ENDPOINT_URL_DYNAMODB=http://127.0.0.1:8001
 
-for table_name in journal snapshot; do
-  aws dynamodb create-table \
-    --endpoint-url "$AWS_ENDPOINT_URL_DYNAMODB" \
-    --table-name "$table_name" \
-    --attribute-definitions AttributeName=pkey,AttributeType=S AttributeName=skey,AttributeType=S \
-    --key-schema AttributeName=pkey,KeyType=HASH AttributeName=skey,KeyType=RANGE \
-    --billing-mode PAY_PER_REQUEST \
-    --no-cli-pager
+aws dynamodb create-table \
+  --endpoint-url "$AWS_ENDPOINT_URL_DYNAMODB" \
+  --table-name journal \
+  --attribute-definitions AttributeName=aid_pkey,AttributeType=S AttributeName=seq_nr,AttributeType=N \
+  --key-schema AttributeName=aid_pkey,KeyType=HASH AttributeName=seq_nr,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST \
+  --no-cli-pager
 
+aws dynamodb create-table \
+  --endpoint-url "$AWS_ENDPOINT_URL_DYNAMODB" \
+  --table-name snapshot \
+  --attribute-definitions AttributeName=aid_pkey,AttributeType=S \
+  --key-schema AttributeName=aid_pkey,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --no-cli-pager
+
+for table_name in journal snapshot; do
   aws dynamodb wait table-exists \
     --endpoint-url "$AWS_ENDPOINT_URL_DYNAMODB" \
     --table-name "$table_name"

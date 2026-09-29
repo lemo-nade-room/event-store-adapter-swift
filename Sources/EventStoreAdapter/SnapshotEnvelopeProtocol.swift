@@ -12,7 +12,7 @@ public import Foundation
 ///   cannot restrict conformance to structs. Modifying a copy must not change the
 ///   original snapshot. Using a struct alone is not sufficient if its copies
 ///   share mutable reference state; the snapshot must preserve value semantics,
-///   including for its payload and version.
+///   including for its payload and persistence metadata.
 public protocol SnapshotEnvelopeProtocol<Payload, AID>: Swift.Sendable, Swift.Hashable {
   /// The type of the aggregate state held by the snapshot.
   associatedtype Payload: Swift.Sendable, Swift.Hashable
@@ -26,8 +26,10 @@ public protocol SnapshotEnvelopeProtocol<Payload, AID>: Swift.Sendable, Swift.Ha
   /// The ID of the aggregate represented by the snapshot.
   var aid: AID { get }
 
-  /// The sequence number of the latest event represented by the snapshot.
-  var seqNr: Swift.Int { get }
+  /// The sequence number of the latest event represented by the stored payload.
+  ///
+  /// To rebuild the aggregate, replay events starting at `appliedSeqNr + 1`.
+  var appliedSeqNr: Swift.Int { get }
 
   /// The optimistic-concurrency version of the snapshot.
   ///
